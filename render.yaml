@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: method-lab
+    runtime: node
+    plan: free
+    buildCommand: "npm run build:standalone"
+    startCommand: "node server.mjs"
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: DEEPSEEK_MODEL
+        value: deepseek-chat

@@ -1,0 +1,2888 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#10231e" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="copyright" content="© 2026 学法实验室 · 原创作品，未经许可不得复制或商用" />
+  <title>学法实验室 · 把方法调试到适合你</title>
+  <style>
+:root {
+  --ink: #10231e;
+  --ink-2: #18342c;
+  --ink-3: #24473c;
+  --paper: #f3eee4;
+  --paper-2: #faf6ee;
+  --cream: #fffdf8;
+  --white: #ffffff;
+  --line: #ded6c7;
+  --line-2: #ebe4d8;
+  --muted: #6f756c;
+  --muted-2: #92988f;
+  --coral: #ff6b4a;
+  --coral-dark: #d94e31;
+  --coral-soft: #ffe8e1;
+  --mint: #b9f2d0;
+  --mint-2: #e7f9ee;
+  --mint-3: #d2f5df;
+  --gold: #f2c15b;
+  --blue: #2e6f9e;
+  --shadow-sm: 0 1px 2px rgba(16, 35, 30, 0.05), 0 4px 12px rgba(16, 35, 30, 0.04);
+  --shadow-md: 0 12px 40px rgba(16, 35, 30, 0.10);
+  --shadow-lg: 0 24px 80px rgba(16, 35, 30, 0.18);
+  --radius: 18px;
+  --font: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Segoe UI", sans-serif;
+  --serif: "Georgia", "Times New Roman", "Songti SC", serif;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+button, input, textarea { font: inherit; }
+button { cursor: pointer; }
+a { color: inherit; }
+::selection { background: var(--mint); color: var(--ink); }
+
+.app {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+/* ---------------------------------------------------------------- sidebar */
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 26px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: #f4f0e8;
+  background:
+    radial-gradient(420px 280px at 20% -10%, rgba(185, 242, 208, 0.18), transparent 65%),
+    radial-gradient(340px 240px at 110% 60%, rgba(255, 107, 74, 0.12), transparent 65%),
+    var(--ink);
+  overflow: hidden;
+}
+.sidebar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(to bottom, black, transparent 70%);
+}
+.brand { display: flex; align-items: center; gap: 12px; position: relative; z-index: 1; }
+.brand-mark {
+  width: 44px; height: 44px; flex: 0 0 44px;
+  display: grid; place-items: center;
+  border-radius: 14px;
+  color: var(--mint);
+  background: rgba(185, 242, 208, 0.10);
+  border: 1px solid rgba(185, 242, 208, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10);
+}
+.brand-mark svg { width: 30px; height: 30px; }
+.brand-name { font-size: 17px; font-weight: 800; letter-spacing: .02em; }
+.brand-sub { margin-top: 3px; font-family: var(--serif); font-size: 9px; letter-spacing: .24em; color: rgba(244,240,232,.48); }
+
+.side-label {
+  margin: 6px 6px -6px;
+  font-size: 10px; letter-spacing: .18em;
+  color: rgba(244,240,232,.38);
+  position: relative; z-index: 1;
+}
+.nav { display: flex; flex-direction: column; gap: 4px; position: relative; z-index: 1; }
+.nav-item {
+  display: flex; align-items: center; gap: 11px;
+  width: 100%; padding: 11px 12px;
+  color: rgba(244,240,232,.68);
+  background: transparent; border: 0; border-radius: 12px;
+  text-align: left; font-size: 13.5px; font-weight: 600;
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+.nav-item:hover { background: rgba(255,255,255,.06); color: #fff; transform: translateX(2px); }
+.nav-item.active {
+  color: #fff;
+  background: linear-gradient(90deg, rgba(185,242,208,.16), rgba(185,242,208,.06));
+  box-shadow: inset 3px 0 0 var(--coral);
+}
+.nav-icon { width: 20px; text-align: center; font-size: 15px; filter: saturate(.85); }
+.nav-badge, .nav-count {
+  margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px;
+  display: inline-grid; place-items: center;
+  font-size: 10.5px; font-weight: 800; border-radius: 99px;
+}
+.nav-badge { color: var(--ink); background: var(--mint); }
+.nav-count { color: rgba(244,240,232,.55); background: rgba(255,255,255,.07); }
+
+.side-card {
+  position: relative; z-index: 1;
+  margin-top: 4px; padding: 15px;
+  border: 1px solid rgba(185,242,208,.16);
+  border-radius: 16px;
+  background: rgba(185,242,208,.055);
+}
+.side-card-top { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 800; color: var(--mint); }
+.side-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 0 4px rgba(255,107,74,.12); }
+.side-card p { margin: 8px 0 12px; font-size: 11.5px; line-height: 1.7; color: rgba(244,240,232,.62); }
+.mini-progress { height: 5px; border-radius: 99px; background: rgba(255,255,255,.10); overflow: hidden; }
+.mini-progress span { display: block; height: 100%; width: 0%; border-radius: inherit; background: linear-gradient(90deg, var(--mint), var(--coral)); transition: width .5s cubic-bezier(.2,.8,.2,1); }
+.mini-label { display: flex; justify-content: space-between; margin-top: 7px; font-size: 10px; color: rgba(244,240,232,.42); }
+
+.sidebar-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
+.demo-btn {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 11px 12px;
+  color: var(--ink); background: var(--mint);
+  border: 0; border-radius: 12px;
+  font-size: 12.5px; font-weight: 800;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.demo-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(185,242,208,.18); }
+.demo-arrow { margin-left: auto; }
+.user-chip { display: flex; align-items: center; gap: 9px; padding: 10px 8px; border-top: 1px solid rgba(255,255,255,.08); }
+.avatar-small { width: 32px; height: 32px; flex: 0 0 32px; display: grid; place-items: center; border-radius: 10px; background: rgba(255,107,74,.16); color: #ffd7cc; font-size: 13px; font-weight: 800; }
+.user-meta { min-width: 0; }
+.user-name { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-sub { margin-top: 2px; font-size: 10px; color: rgba(244,240,232,.42); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.streak { margin-left: auto; font-family: var(--serif); font-size: 19px; color: var(--mint); }
+.streak span { margin-left: 1px; font-size: 9px; color: rgba(244,240,232,.42); }
+.privacy { text-align: center; font-size: 9.5px; color: rgba(244,240,232,.30); }
+
+/* ---------------------------------------------------------------- main / topbar */
+.main { min-width: 0; height: 100vh; display: flex; flex-direction: column; background: var(--paper); overflow: hidden; }
+.topbar {
+  flex: 0 0 auto;
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+  padding: 22px 34px 18px;
+  border-bottom: 1px solid rgba(16,35,30,.08);
+  background: rgba(243,238,228,.86);
+  backdrop-filter: blur(14px);
+  z-index: 5;
+}
+.crumb { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted-2); font-weight: 700; }
+.topbar h1 { margin: 6px 0 0; font-size: 25px; line-height: 1.2; letter-spacing: -.02em; font-weight: 800; }
+.topbar-right { display: flex; align-items: center; gap: 10px; padding-bottom: 2px; }
+.date { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 11px;
+  color: var(--ink-2); background: var(--cream);
+  border: 1px solid var(--line); border-radius: 99px;
+  font-size: 10.5px; font-weight: 700;
+}
+.status-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: #3ea56b; box-shadow: 0 0 0 3px rgba(62,165,107,.12); }
+.status-pill.off .dot { background: var(--muted-2); box-shadow: none; }
+.status-pill.on { border-color: #c9ead6; background: #f2fcf6; color: #1e6b45; }
+.icon-btn { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--muted); font-size: 16px; }
+.icon-btn:hover { color: var(--ink); border-color: #cfc6b5; }
+
+/* ---------------------------------------------------------------- views */
+.view { display: none; flex: 1 1 auto; min-height: 0; overflow: auto; }
+.view.active { display: block; }
+#view-chat.active { display: flex; overflow: hidden; }
+.chat-shell { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) 304px; min-height: 0; }
+.chat-column { min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.chat-stream {
+  flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain;
+  padding: 26px 34px 18px;
+  background-image: radial-gradient(rgba(16,35,30,.055) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.chat-stream::-webkit-scrollbar, .context-column::-webkit-scrollbar, .view::-webkit-scrollbar { width: 8px; }
+.chat-stream::-webkit-scrollbar-thumb, .context-column::-webkit-scrollbar-thumb, .view::-webkit-scrollbar-thumb { background: rgba(16,35,30,.14); border-radius: 99px; }
+
+.message { display: flex; gap: 11px; margin: 0 0 20px; animation: rise .32s cubic-bezier(.2,.8,.2,1) both; }
+.message.user { flex-direction: row-reverse; }
+.avatar {
+  width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center;
+  border-radius: 11px; background: var(--ink); color: var(--mint);
+  font-size: 13px; font-weight: 800; box-shadow: var(--shadow-sm);
+}
+.message.user .avatar { background: var(--coral); color: #fff; }
+.msg-wrap { min-width: 0; flex: 1 1 auto; max-width: 820px; }
+.message.user .msg-wrap { flex: 0 1 auto; max-width: 72%; }
+.msg-meta { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 10px; color: var(--muted-2); }
+.message.user .msg-meta { justify-content: flex-end; }
+.msg-meta strong { color: var(--muted); font-weight: 700; }
+.bubble {
+  display: inline-block;
+  max-width: 100%;
+  padding: 13px 16px;
+  border: 1px solid var(--line);
+  border-radius: 4px 16px 16px 16px;
+  background: var(--cream);
+  box-shadow: var(--shadow-sm);
+  font-size: 13.5px; line-height: 1.75;
+  color: #26352f;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.message.user .bubble { border: 0; border-radius: 16px 4px 16px 16px; background: var(--coral); color: #fff; box-shadow: 0 8px 22px rgba(217,78,49,.18); }
+.bubble p { margin: 0; }
+.bubble .muted { color: var(--muted); }
+.bubble strong { font-weight: 800; }
+.bubble .hl { background: linear-gradient(transparent 55%, var(--mint) 55%); padding: 0 2px; }
+
+/* cards inside chat */
+.coach-card { margin-top: 2px; border-radius: 20px; border: 1px solid var(--line); background: var(--cream); box-shadow: var(--shadow-sm); overflow: hidden; }
+.coach-card + .coach-card { margin-top: 12px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 18px 0; }
+.card-kicker { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 800; letter-spacing: .12em; color: var(--muted-2); }
+.card-kicker .ico { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 7px; background: var(--mint-2); font-size: 12px; }
+.card-title { margin: 8px 18px 0; font-size: 18px; line-height: 1.35; font-weight: 800; letter-spacing: -.01em; }
+.card-body { padding: 14px 18px 18px; }
+.card-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px; border-top: 1px dashed var(--line-2); background: #fcfaf4; }
+.tag { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 99px; font-size: 10px; font-weight: 800; }
+.tag.mint { color: #1e6b45; background: var(--mint-2); }
+.tag.coral { color: #a53e27; background: var(--coral-soft); }
+.tag.ink { color: var(--cream); background: var(--ink); }
+.tag.gold { color: #7a5a10; background: #fff3d4; }
+.tag.gray { color: var(--muted); background: #f1eee7; }
+
+.diagnosis-card { border-left: 4px solid var(--coral); }
+.diagnosis-grid { display: grid; grid-template-columns: 130px 1fr; gap: 18px; align-items: center; }
+.readiness-ring {
+  --value: 70;
+  width: 118px; height: 118px; border-radius: 50%;
+  display: grid; place-items: center; position: relative;
+  background: conic-gradient(var(--coral) calc(var(--value) * 1%), #eee8dc 0);
+  margin: 0 auto;
+}
+.readiness-ring::before { content: ""; position: absolute; inset: 9px; border-radius: 50%; background: var(--cream); }
+.readiness-inner { position: relative; text-align: center; }
+.readiness-num { font-family: var(--serif); font-size: 30px; font-weight: 700; line-height: 1; }
+.readiness-label { margin-top: 4px; font-size: 9px; color: var(--muted-2); letter-spacing: .08em; }
+.diag-bullets { display: grid; gap: 9px; }
+.diag-row { display: grid; grid-template-columns: 74px 1fr; gap: 10px; font-size: 12px; line-height: 1.55; }
+.diag-row .k { color: var(--muted-2); }
+.diag-row .v { color: var(--ink-2); font-weight: 600; }
+.prescription { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--mint-2); border: 1px solid #d2f0dd; font-size: 12px; line-height: 1.7; color: #245443; }
+
+.method-card { border-color: #cbe9d5; background: linear-gradient(180deg, #f5fcf7 0%, #fffdf8 62%); }
+.method-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.method-name { font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+.method-en { margin-top: 2px; font-family: var(--serif); font-size: 11px; letter-spacing: .08em; color: var(--muted-2); }
+.fit-pill { flex: 0 0 auto; text-align: right; }
+.fit-num { font-family: var(--serif); font-size: 26px; line-height: 1; color: #1e6b45; }
+.fit-label { font-size: 9px; color: var(--muted-2); }
+.method-quote { margin: 12px 0 0; font-size: 13px; line-height: 1.7; color: #3c4a43; }
+.method-meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+.method-why { display: grid; gap: 7px; margin-top: 14px; }
+.why-row { display: flex; gap: 8px; font-size: 12px; line-height: 1.6; color: #46554d; }
+.why-row span:first-child { color: #2b8a5b; font-weight: 800; }
+.reason-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.reason-pill { padding: 4px 8px; border-radius: 99px; background: rgba(16,35,30,.05); color: var(--muted); font-size: 10px; }
+.evidence-badge { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: var(--ink); color: var(--mint); font-size: 10px; font-weight: 800; }
+
+.plan-card { border-color: #e4d8c2; }
+.plan-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.plan-title { font-size: 18px; font-weight: 800; }
+.plan-sub { margin-top: 4px; font-size: 11px; color: var(--muted); }
+.plan-time { font-family: var(--serif); font-size: 23px; }
+.plan-time span { font-family: var(--font); font-size: 9px; color: var(--muted-2); }
+.task-list { display: grid; gap: 8px; margin-top: 14px; }
+.task {
+  display: flex; gap: 11px; align-items: flex-start;
+  padding: 11px 12px;
+  border: 1px solid var(--line-2); border-radius: 12px;
+  background: #fffefa;
+  transition: background .18s ease, border-color .18s ease;
+}
+.task:hover { border-color: #d7cbb8; }
+.task.done { background: #f1fbf5; border-color: #cdebd8; }
+.task.done .task-title { text-decoration: line-through; color: var(--muted-2); }
+.task-check {
+  width: 20px; height: 20px; flex: 0 0 20px; margin-top: 1px;
+  display: grid; place-items: center; border-radius: 6px;
+  border: 1.5px solid #cdc5b7; background: #fff; color: transparent; font-size: 11px;
+}
+.task.done .task-check { border-color: #2b8a5b; background: #2b8a5b; color: #fff; }
+.task-body { min-width: 0; flex: 1; }
+.task-title { font-size: 12.5px; font-weight: 700; }
+.task-desc { margin-top: 3px; font-size: 11px; line-height: 1.55; color: var(--muted); }
+.task-meta { display: flex; gap: 8px; margin-top: 6px; font-size: 9.5px; color: var(--muted-2); }
+.task-meta .out { color: #2b8a5b; font-weight: 700; }
+.task-min { flex: 0 0 auto; font-size: 10px; color: var(--muted-2); margin-top: 2px; }
+.plan-metric { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #f7f3e9; font-size: 11px; line-height: 1.6; color: #5d5749; }
+.plan-metric strong { color: var(--ink); }
+
+.summary-card { border-left: 4px solid #2b8a5b; }
+.summary-card.warn { border-left-color: var(--gold); }
+.summary-card.bad { border-left-color: var(--coral); }
+.summary-grid { display: grid; grid-template-columns: 110px 1fr; gap: 18px; align-items: center; }
+.effect-ring {
+  --value: 70;
+  width: 104px; height: 104px; border-radius: 50%;
+  display: grid; place-items: center; position: relative;
+  background: conic-gradient(#2b8a5b calc(var(--value) * 1%), #eee8dc 0);
+  margin: 0 auto;
+}
+.effect-ring::before { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: var(--cream); }
+.effect-inner { position: relative; text-align: center; }
+.effect-num { font-family: var(--serif); font-size: 29px; line-height: 1; font-weight: 700; }
+.effect-label { margin-top: 3px; font-size: 8.5px; color: var(--muted-2); letter-spacing: .08em; }
+.summary-headline { font-size: 15px; font-weight: 800; line-height: 1.4; }
+.summary-reason { margin-top: 6px; font-size: 11.5px; line-height: 1.7; color: var(--muted); }
+.summary-stats { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+.stat-pill { padding: 5px 8px; border-radius: 8px; background: #f6f2e9; font-size: 10px; color: var(--muted); }
+.stat-pill b { color: var(--ink); }
+.next-day { margin-top: 15px; padding: 13px 14px; border-radius: 13px; background: var(--ink); color: #edf7f0; }
+.next-day-title { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 800; letter-spacing: .1em; color: var(--mint); }
+.next-day ol { margin: 9px 0 0; padding-left: 18px; display: grid; gap: 6px; }
+.next-day li { font-size: 11.5px; line-height: 1.6; color: rgba(237,247,240,.82); }
+
+.switch-card { border-color: #f2c9bd; background: linear-gradient(180deg, #fff4f0, #fffdf8); }
+.switch-path { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.switch-old { padding: 7px 10px; border-radius: 9px; background: #f0ece3; color: var(--muted); font-size: 11px; text-decoration: line-through; }
+.switch-arrow { color: var(--coral); font-weight: 800; }
+.switch-new { padding: 7px 10px; border-radius: 9px; background: var(--coral); color: #fff; font-size: 11px; font-weight: 800; }
+.switch-reason { margin-top: 10px; font-size: 11.5px; line-height: 1.7; color: #6b4438; }
+
+/* gate card */
+.gate-card { margin-top: 2px; border-radius: 22px; background: var(--ink); color: #f4f0e8; box-shadow: var(--shadow-md); overflow: hidden; border: 1px solid rgba(185,242,208,.16); }
+.gate-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 0; }
+.gate-head .left { display: flex; align-items: center; gap: 9px; }
+.gate-title { font-size: 16px; font-weight: 800; }
+.gate-sub { font-size: 10px; color: rgba(244,240,232,.48); }
+.gate-progress { display: flex; gap: 5px; margin: 14px 20px 0; }
+.gate-seg { height: 4px; flex: 1; border-radius: 99px; background: rgba(255,255,255,.12); overflow: hidden; }
+.gate-seg i { display: block; height: 100%; width: 0; background: var(--mint); border-radius: inherit; transition: width .4s ease; }
+.gate-seg.done i { width: 100%; }
+.gate-seg.active i { width: 55%; background: var(--coral); }
+.gate-questions { padding: 12px 20px 6px; display: grid; gap: 8px; }
+.gate-q { display: flex; gap: 11px; padding: 11px 12px; border-radius: 13px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.035); }
+.gate-q.active { border-color: rgba(255,107,74,.55); background: rgba(255,107,74,.08); }
+.gate-q.done { border-color: rgba(185,242,208,.22); background: rgba(185,242,208,.055); }
+.q-index { width: 22px; height: 22px; flex: 0 0 22px; display: grid; place-items: center; border-radius: 7px; background: rgba(255,255,255,.08); font-size: 10px; font-weight: 800; color: rgba(244,240,232,.62); }
+.gate-q.active .q-index { background: var(--coral); color: #fff; }
+.gate-q.done .q-index { background: var(--mint); color: var(--ink); }
+.q-body { min-width: 0; }
+.q-title { font-size: 11.5px; font-weight: 700; line-height: 1.5; color: rgba(244,240,232,.86); }
+.q-hint { margin-top: 3px; font-size: 10px; line-height: 1.55; color: rgba(244,240,232,.40); }
+.q-answer { margin-top: 4px; font-size: 11px; line-height: 1.55; color: var(--mint); }
+.gate-lock { display: flex; align-items: center; gap: 7px; padding: 11px 20px 16px; font-size: 10px; color: rgba(244,240,232,.46); }
+.gate-unlocked { display: flex; align-items: center; gap: 7px; padding: 11px 20px 16px; font-size: 11px; color: var(--mint); font-weight: 700; }
+
+/* suggestions + composer */
+.composer-wrap { flex: 0 0 auto; padding: 10px 34px 14px; background: linear-gradient(to top, var(--paper) 72%, rgba(243,238,228,0)); }
+.suggestions { display: flex; gap: 7px; overflow-x: auto; padding: 0 0 9px; scrollbar-width: none; }
+.suggestions::-webkit-scrollbar { display: none; }
+.chip {
+  flex: 0 0 auto; padding: 7px 10px;
+  border: 1px solid #d8cfbf; border-radius: 99px;
+  background: rgba(255,253,248,.8); color: #4f5b53;
+  font-size: 10.5px; font-weight: 600;
+  transition: all .16s ease;
+}
+.chip:hover { border-color: var(--coral); color: var(--coral-dark); background: #fff; transform: translateY(-1px); }
+.composer {
+  display: flex; align-items: flex-end; gap: 9px;
+  padding: 8px 8px 8px 15px;
+  border: 1px solid #d5cbbb; border-radius: 17px;
+  background: var(--cream);
+  box-shadow: 0 8px 30px rgba(16,35,30,.06);
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.composer:focus-within { border-color: var(--ink-3); box-shadow: 0 0 0 4px rgba(16,35,30,.06), 0 10px 34px rgba(16,35,30,.08); }
+.composer textarea { flex: 1; min-height: 24px; max-height: 130px; padding: 6px 0; border: 0; outline: 0; resize: none; background: transparent; color: var(--ink); font-size: 13px; line-height: 1.6; }
+.composer textarea::placeholder { color: #a7a196; }
+.send-btn { width: 38px; height: 38px; flex: 0 0 38px; display: grid; place-items: center; border: 0; border-radius: 12px; background: var(--ink); color: var(--mint); transition: transform .16s ease, background .16s ease; }
+.send-btn:hover { transform: translateY(-1px); background: var(--ink-3); }
+.send-btn:disabled { opacity: .4; cursor: default; transform: none; }
+.send-btn svg { width: 18px; height: 18px; }
+.composer-note { display: flex; justify-content: space-between; gap: 12px; padding: 7px 3px 0; font-size: 9.5px; color: #9c9588; }
+.composer-note span:last-child { color: #a07a68; }
+
+/* typing */
+.typing { display: inline-flex; gap: 4px; align-items: center; padding: 4px 2px; }
+.typing i { width: 5px; height: 5px; border-radius: 50%; background: var(--muted-2); animation: blink 1.2s infinite; }
+.typing i:nth-child(2) { animation-delay: .15s; }
+.typing i:nth-child(3) { animation-delay: .3s; }
+
+/* ---------------------------------------------------------------- context panel */
+.context-column { border-left: 1px solid rgba(16,35,30,.08); background: rgba(250,246,238,.68); padding: 22px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.ctx-card { border: 1px solid var(--line); border-radius: 16px; background: var(--cream); padding: 14px; box-shadow: var(--shadow-sm); }
+.ctx-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.ctx-title { font-size: 10px; letter-spacing: .12em; font-weight: 800; color: var(--muted-2); }
+.ctx-dots { display: flex; gap: 3px; }
+.ctx-dots i { width: 6px; height: 6px; border-radius: 50%; background: #e3dccf; }
+.ctx-dots i.on { background: var(--coral); }
+.ctx-dots i.done { background: #2b8a5b; }
+.ctx-gate-line { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; }
+.ctx-gate-sub { margin-top: 5px; font-size: 10px; line-height: 1.55; color: var(--muted); }
+.ctx-progress { height: 5px; margin-top: 9px; border-radius: 99px; background: #eee8dc; overflow: hidden; }
+.ctx-progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2b8a5b, var(--coral)); }
+.ctx-today { margin-top: 2px; }
+.ctx-method { font-size: 15px; font-weight: 800; line-height: 1.3; }
+.ctx-method-sub { margin-top: 4px; font-size: 10px; color: var(--muted); }
+.ctx-task-progress { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.ctx-task-progress .bar { flex: 1; height: 5px; border-radius: 99px; background: #eee8dc; overflow: hidden; }
+.ctx-task-progress .bar span { display: block; height: 100%; background: #2b8a5b; border-radius: inherit; }
+.ctx-task-progress .num { font-family: var(--serif); font-size: 13px; color: var(--muted); }
+.ctx-btn { width: 100%; margin-top: 10px; padding: 9px 10px; border: 1px solid var(--ink); border-radius: 10px; background: var(--ink); color: var(--cream); font-size: 11px; font-weight: 800; }
+.ctx-btn:hover { background: var(--ink-3); }
+.ctx-memory-line { font-size: 12px; font-weight: 700; }
+.ctx-memory-sub { margin-top: 5px; font-size: 10px; line-height: 1.6; color: var(--muted); }
+.ctx-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 9px; padding: 0; border: 0; background: transparent; color: var(--coral-dark); font-size: 10px; font-weight: 700; }
+.ctx-principles { background: var(--ink); color: #f4f0e8; border-color: var(--ink); }
+.ctx-principles .ctx-title { color: var(--mint); }
+.ctx-principles ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.ctx-principles li { display: flex; gap: 8px; font-size: 10.5px; line-height: 1.55; color: rgba(244,240,232,.66); }
+.ctx-principles li span { color: var(--coral); font-weight: 800; }
+.demo-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border: 1px dashed #d9c9a9; border-radius: 12px; background: #fff8e8; color: #7a5a10; font-size: 10.5px; }
+.demo-banner button { border: 0; background: transparent; color: #a53e27; font-size: 10px; font-weight: 800; text-decoration: underline; }
+
+/* ---------------------------------------------------------------- library */
+#view-library, #view-memory, #view-report { padding: 28px 34px 50px; }
+.view-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 20px; }
+.view-head h2 { margin: 5px 0 0; font-size: 25px; letter-spacing: -.02em; }
+.view-head p { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.kicker { font-family: var(--serif); font-size: 9px; letter-spacing: .2em; color: var(--coral-dark); }
+.search-wrap { display: flex; align-items: center; gap: 8px; min-width: 250px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--cream); }
+.search-wrap span { color: var(--muted-2); font-size: 17px; }
+.search-wrap input { width: 100%; border: 0; outline: 0; background: transparent; font-size: 12px; }
+.filter-row { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 18px; }
+.filter-chip { padding: 6px 10px; border: 1px solid var(--line); border-radius: 99px; background: var(--cream); color: var(--muted); font-size: 10.5px; font-weight: 700; }
+.filter-chip:hover { border-color: #c8bda9; color: var(--ink); }
+.filter-chip.active { background: var(--ink); border-color: var(--ink); color: var(--mint); }
+.method-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.method-tile { position: relative; padding: 15px 15px 13px; border: 1px solid var(--line); border-radius: 16px; background: var(--cream); box-shadow: var(--shadow-sm); text-align: left; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.method-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: #cfc2ae; }
+.method-tile-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.method-tile-name { font-size: 14px; font-weight: 800; }
+.method-tile-en { margin-top: 2px; font-family: var(--serif); font-size: 9px; color: var(--muted-2); letter-spacing: .04em; }
+.method-tile p { min-height: 36px; margin: 9px 0 10px; font-size: 10.5px; line-height: 1.6; color: var(--muted); }
+.method-tile-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 9px; border-top: 1px dashed var(--line-2); }
+.domain-dot { display: inline-flex; align-items: center; gap: 5px; font-size: 9.5px; color: var(--muted); }
+.domain-dot i { width: 6px; height: 6px; border-radius: 50%; }
+.method-tile-time { font-size: 9.5px; color: var(--muted-2); }
+.evidence { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; background: var(--ink); color: var(--mint); font-size: 9px; font-weight: 800; }
+.empty-state { grid-column: 1 / -1; padding: 60px 20px; border: 1px dashed #d7cbb8; border-radius: 18px; text-align: center; color: var(--muted); background: rgba(255,253,248,.5); }
+.empty-state .big { font-size: 30px; margin-bottom: 10px; }
+
+/* ---------------------------------------------------------------- memory / report */
+.memory-top, .report-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+.memory-top h2, .report-top h2 { margin: 5px 0 0; font-size: 25px; letter-spacing: -.02em; }
+.memory-top p, .report-top p { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.stat-card { padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--cream); }
+.stat-card .k { font-size: 9.5px; letter-spacing: .08em; color: var(--muted-2); font-weight: 700; }
+.stat-card .v { margin-top: 6px; font-family: var(--serif); font-size: 26px; line-height: 1; }
+.stat-card .v small { font-family: var(--font); font-size: 10px; color: var(--muted-2); }
+.stat-card .s { margin-top: 5px; font-size: 9.5px; color: var(--muted); }
+.memory-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 14px; align-items: start; }
+.panel { padding: 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--cream); box-shadow: var(--shadow-sm); }
+.panel + .panel { margin-top: 14px; }
+.panel-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
+.panel-title h3 { margin: 0; font-size: 14px; }
+.panel-title span { font-size: 9px; color: var(--muted-2); letter-spacing: .1em; }
+.profile-line { display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-top: 1px dashed var(--line-2); }
+.profile-line:first-of-type { border-top: 0; padding-top: 0; }
+.profile-line .k { flex: 0 0 68px; font-size: 10px; color: var(--muted-2); padding-top: 2px; }
+.profile-line .v { font-size: 11.5px; line-height: 1.65; color: var(--ink-2); font-weight: 600; }
+.timeline { position: relative; padding-left: 17px; }
+.timeline::before { content: ""; position: absolute; left: 4px; top: 5px; bottom: 5px; width: 1px; background: #e1d8c8; }
+.tl-item { position: relative; padding: 0 0 15px 9px; }
+.tl-item::before { content: ""; position: absolute; left: -17px; top: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--cream); border: 2px solid #b9b0a0; }
+.tl-item.good::before { border-color: #2b8a5b; background: #2b8a5b; }
+.tl-item.warn::before { border-color: var(--coral); background: var(--coral); }
+.tl-date { font-size: 9px; color: var(--muted-2); letter-spacing: .04em; }
+.tl-title { margin-top: 3px; font-size: 11.5px; font-weight: 700; line-height: 1.45; }
+.tl-desc { margin-top: 3px; font-size: 10.5px; line-height: 1.6; color: var(--muted); }
+.trial-table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+.trial-table th { text-align: left; padding: 6px 7px; border-bottom: 1px solid var(--line-2); color: var(--muted-2); font-weight: 700; font-size: 9px; letter-spacing: .06em; }
+.trial-table td { padding: 8px 7px; border-bottom: 1px dashed var(--line-2); color: var(--ink-2); }
+.trial-table tr:last-child td { border-bottom: 0; }
+.badge-status { display: inline-flex; padding: 3px 6px; border-radius: 5px; font-size: 8.5px; font-weight: 800; }
+.badge-status.active { color: #1e6b45; background: var(--mint-2); }
+.badge-status.switched { color: #a53e27; background: var(--coral-soft); }
+.memory-note { margin-top: 12px; padding: 11px 12px; border-radius: 11px; background: #f7f3e9; font-size: 10.5px; line-height: 1.65; color: #6a6253; }
+.memory-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--cream); color: var(--ink); font-size: 11px; font-weight: 800; transition: all .16s ease; }
+.btn:hover { border-color: #cfc2ae; transform: translateY(-1px); }
+.btn.primary { border-color: var(--ink); background: var(--ink); color: var(--cream); }
+.btn.primary:hover { background: var(--ink-3); }
+.btn.coral { border-color: var(--coral); background: var(--coral); color: #fff; }
+.btn.ghost { background: transparent; }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+.chart-box { padding: 6px 0 0; }
+.chart { display: flex; align-items: flex-end; gap: 10px; height: 168px; padding: 12px 4px 0; border-bottom: 1px solid var(--line-2); }
+.bar-group { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 5px; height: 100%; position: relative; }
+.bar-stack { width: 100%; max-width: 34px; height: 100%; display: flex; align-items: flex-end; gap: 3px; }
+.bar { flex: 1; min-height: 2px; border-radius: 4px 4px 2px 2px; background: var(--ink); opacity: .86; transition: height .5s ease; }
+.bar.effect { background: var(--coral); }
+.bar-label { font-size: 8px; color: var(--muted-2); white-space: nowrap; }
+.bar-values { position: absolute; top: -2px; left: 50%; transform: translateX(-50%); display: none; padding: 5px 7px; border-radius: 6px; background: var(--ink); color: #fff; font-size: 8.5px; white-space: nowrap; z-index: 2; }
+.bar-group:hover .bar-values { display: block; }
+.legend { display: flex; gap: 14px; padding-top: 9px; font-size: 9px; color: var(--muted); }
+.legend i { display: inline-block; width: 7px; height: 7px; border-radius: 2px; margin-right: 4px; }
+.insight-list { display: grid; gap: 9px; }
+.insight { display: flex; gap: 9px; padding: 10px 11px; border-radius: 11px; background: #f9f5ec; font-size: 10.5px; line-height: 1.65; color: #5e5749; }
+.insight b { color: var(--ink); }
+.insight .ico { flex: 0 0 auto; }
+.report-grid { display: grid; grid-template-columns: 1.25fr .75fr; gap: 14px; align-items: start; }
+.report-note { margin-top: 12px; font-size: 9.5px; color: var(--muted-2); line-height: 1.6; }
+
+/* ---------------------------------------------------------------- modal */
+.modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(16,35,30,.52); backdrop-filter: blur(6px); animation: fade .18s ease both; }
+.modal { width: min(720px, 100%); max-height: min(88vh, 820px); overflow: auto; border-radius: 22px; background: var(--paper-2); box-shadow: var(--shadow-lg); border: 1px solid rgba(255,255,255,.4); animation: pop .22s cubic-bezier(.2,.8,.2,1) both; }
+.modal.narrow { width: min(520px, 100%); }
+.modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 22px 14px; border-bottom: 1px solid var(--line-2); }
+.modal-head h3 { margin: 0; font-size: 19px; letter-spacing: -.01em; }
+.modal-head p { margin: 5px 0 0; font-size: 11px; color: var(--muted); }
+.modal-close { width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 9px; background: var(--cream); color: var(--muted); font-size: 14px; }
+.modal-body { padding: 18px 22px 22px; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 9px; padding: 14px 22px; border-top: 1px solid var(--line-2); background: #fcf8f0; }
+.modal-close:hover { color: var(--ink); }
+
+.feedback-grid { display: grid; gap: 16px; }
+.feedback-block { padding: 13px 14px; border: 1px solid var(--line); border-radius: 13px; background: var(--cream); }
+.feedback-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11.5px; font-weight: 800; }
+.feedback-label small { font-weight: 400; color: var(--muted-2); font-size: 9.5px; }
+.range-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.range-row input[type="range"] { flex: 1; accent-color: var(--coral); }
+.range-value { min-width: 42px; text-align: right; font-family: var(--serif); font-size: 20px; }
+.mood-row { display: flex; gap: 7px; margin-top: 10px; flex-wrap: wrap; }
+.mood-btn { flex: 1; min-width: 52px; padding: 8px 4px; border: 1px solid var(--line); border-radius: 10px; background: #fff; text-align: center; font-size: 18px; transition: all .15s ease; }
+.mood-btn small { display: block; margin-top: 2px; font-size: 8px; color: var(--muted-2); }
+.mood-btn.active { border-color: var(--coral); background: var(--coral-soft); box-shadow: 0 0 0 2px rgba(255,107,74,.12); }
+.difficulty-row { display: flex; gap: 7px; margin-top: 10px; }
+.diff-btn { flex: 1; padding: 8px 4px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font-size: 10px; color: var(--muted); }
+.diff-btn.active { border-color: var(--ink); background: var(--ink); color: var(--mint); }
+.feedback-note { width: 100%; min-height: 76px; margin-top: 9px; padding: 10px 11px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 11.5px; line-height: 1.6; resize: vertical; outline: 0; }
+.feedback-note:focus { border-color: var(--ink-3); }
+.feedback-tip { margin-top: 8px; padding: 9px 10px; border-radius: 9px; background: #f7f3e9; font-size: 9.5px; line-height: 1.6; color: #6f6758; }
+
+.method-detail-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.method-detail-name { font-size: 25px; font-weight: 800; letter-spacing: -.02em; }
+.method-detail-en { margin-top: 3px; font-family: var(--serif); font-size: 10px; color: var(--muted-2); letter-spacing: .06em; }
+.detail-section { margin-top: 16px; }
+.detail-section h4 { margin: 0 0 8px; font-size: 10px; letter-spacing: .1em; color: var(--muted-2); }
+.detail-section p, .detail-section li { font-size: 11.5px; line-height: 1.75; color: #3e4c45; }
+.detail-section ul, .detail-section ol { margin: 0; padding-left: 18px; display: grid; gap: 5px; }
+.detail-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.detail-box { padding: 12px; border: 1px solid var(--line-2); border-radius: 11px; background: #fffdf8; }
+.detail-box .t { font-size: 9px; letter-spacing: .08em; color: var(--muted-2); font-weight: 800; }
+.detail-box .c { margin-top: 5px; font-size: 11px; line-height: 1.65; color: #4a564f; }
+.source-note { margin-top: 14px; padding: 10px 12px; border-left: 2px solid var(--line); font-size: 9.5px; line-height: 1.6; color: var(--muted-2); }
+
+.demo-modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.demo-card { padding: 14px; border: 1px solid var(--line); border-radius: 13px; background: var(--cream); text-align: left; transition: all .16s ease; }
+.demo-card:hover { border-color: var(--coral); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.demo-card .e { font-size: 22px; }
+.demo-card .t { margin-top: 7px; font-size: 12px; font-weight: 800; }
+.demo-card .s { margin-top: 4px; font-size: 10px; line-height: 1.55; color: var(--muted); }
+.demo-card .go { margin-top: 9px; font-size: 9.5px; color: var(--coral-dark); font-weight: 800; }
+
+.toast { position: fixed; left: 50%; bottom: 24px; z-index: 80; transform: translate(-50%, 20px); max-width: min(90vw, 520px); padding: 10px 14px; border-radius: 10px; background: var(--ink); color: var(--cream); font-size: 11.5px; line-height: 1.5; box-shadow: var(--shadow-md); opacity: 0; pointer-events: none; transition: all .22s ease; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@keyframes rise { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes blink { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
+
+/* ---------------------------------------------------------------- responsive */
+@media (max-width: 1180px) {
+  .chat-shell { grid-template-columns: minmax(0, 1fr); }
+  .context-column { display: none; }
+}
+@media (max-width: 980px) {
+  .app { grid-template-columns: 226px minmax(0, 1fr); }
+  .topbar { padding: 18px 22px 15px; }
+  .chat-stream, .composer-wrap { padding-left: 22px; padding-right: 22px; }
+  #view-library, #view-memory, #view-report { padding-left: 22px; padding-right: 22px; }
+  .memory-grid, .report-grid { grid-template-columns: 1fr; }
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 760px) {
+  .app { display: block; }
+  .sidebar { position: relative; width: 100%; height: auto; padding: 14px 14px 10px; gap: 10px; }
+  .sidebar::after, .side-label, .side-card, .sidebar-foot .privacy, .user-chip { display: none; }
+  .brand { margin-bottom: 4px; }
+  .brand-mark { width: 36px; height: 36px; flex-basis: 36px; }
+  .nav { flex-direction: row; gap: 4px; overflow-x: auto; }
+  .nav-item { flex: 0 0 auto; width: auto; padding: 8px 10px; font-size: 11px; }
+  .nav-item.active { box-shadow: inset 0 -2px 0 var(--coral); }
+  .nav-badge, .nav-count { display: none; }
+  .main { height: auto; min-height: calc(100vh - 118px); }
+  .topbar { padding: 14px 16px 12px; align-items: flex-start; }
+  .topbar h1 { font-size: 19px; }
+  .date, .status-pill { display: none; }
+  #view-chat.active { height: calc(100vh - 118px); }
+  .chat-stream { padding: 16px 14px 10px; overflow-x: hidden; }
+  .composer-wrap { padding: 8px 14px 10px; }
+  .message { min-width: 0; }
+  .message.agent .msg-wrap { width: auto; flex: 1 1 0; min-width: 0; max-width: calc(100vw - 78px); overflow: hidden; }
+  .message.user .msg-wrap { max-width: 82%; }
+  .coach-card { width: 100%; max-width: 100%; }
+  .task-desc, .task-title, .task-meta { overflow-wrap: anywhere; }
+  .coach-card, .card-body, .task-body { min-width: 0; max-width: 100%; }
+  .card-foot { flex-wrap: wrap; }
+  .card-foot .btn { width: 100%; }
+  .plan-top, .method-top { flex-wrap: wrap; gap: 6px; }
+  .nav-icon { display: none; }
+  .nav-item { font-size: 10.5px; padding: 8px 8px; }
+  .composer-note span:last-child { display: none; }
+  .message { gap: 8px; }
+  .avatar { width: 28px; height: 28px; flex-basis: 28px; font-size: 11px; }
+  .msg-wrap { max-width: calc(100% - 36px); }
+  .bubble { font-size: 12.5px; padding: 11px 13px; }
+  .diagnosis-grid, .summary-grid { grid-template-columns: 1fr; }
+  .readiness-ring, .effect-ring { margin: 0; }
+  .method-name { font-size: 20px; }
+  #view-library, #view-memory, #view-report { padding: 18px 14px 40px; }
+  .view-head, .memory-top, .report-top { display: block; }
+  .search-wrap { margin-top: 12px; min-width: 0; }
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .method-grid { grid-template-columns: 1fr; }
+  .modal-backdrop { padding: 10px; }
+  .modal { max-height: 92vh; border-radius: 18px; }
+  .modal-body { padding: 15px; }
+  .modal-head, .modal-foot { padding-left: 15px; padding-right: 15px; }
+  .detail-two, .demo-modal-grid { grid-template-columns: 1fr; }
+  .topbar-right .icon-btn { display: none; }
+}
+
+</style>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2310231e'/%3E%3Cpath d='M25 12h14M28 12v13L18 45a6 6 0 0 0 5.4 9h17.2A6 6 0 0 0 46 45L36 25V12' fill='none' stroke='%23b9f2d0' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M21 39h22' stroke='%23ff7a59' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40" fill="none">
+            <path d="M15 5h10M17 5v9.5L8.8 28.5A4.8 4.8 0 0 0 13 35.5h14a4.8 4.8 0 0 0 4.2-7L23 14.5V5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12.5 27.5h15" stroke="#ff7a59" stroke-width="2.6" stroke-linecap="round"/>
+            <circle cx="18" cy="31" r="1.5" fill="#ff7a59"/>
+            <circle cx="23" cy="30" r="1" fill="#ff7a59"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">学法实验室</div>
+          <div class="brand-sub">METHOD LAB</div>
+        </div>
+      </div>
+
+      <div class="side-label">教练台</div>
+      <nav class="nav" aria-label="主导航">
+        <button class="nav-item active" data-action="view" data-view="chat">
+          <span class="nav-icon">🧪</span><span>今日教练</span><span class="nav-badge" id="navToday">1</span>
+        </button>
+        <button class="nav-item" data-action="view" data-view="library">
+          <span class="nav-icon">🗂️</span><span>方法库</span><span class="nav-count" id="navMethods">43</span>
+        </button>
+        <button class="nav-item" data-action="view" data-view="memory">
+          <span class="nav-icon">🧠</span><span>我的记忆</span>
+        </button>
+        <button class="nav-item" data-action="view" data-view="report">
+          <span class="nav-icon">📈</span><span>学习报告</span>
+        </button>
+      </nav>
+
+      <div class="side-card">
+        <div class="side-card-top"><span>今日原则</span><span class="side-dot"></span></div>
+        <p>先问 3 个问题，再给方案。答不完，就不进入匹配。</p>
+        <div class="mini-progress"><span id="gateMiniBar"></span></div>
+        <div class="mini-label"><span id="gateMiniText">0 / 3</span><span>硬门槛</span></div>
+      </div>
+
+      <div class="sidebar-foot">
+        <button class="demo-btn" data-action="open-demo"><span>✨</span> 演示档案 <span class="demo-arrow">→</span></button>
+        <div class="user-chip">
+          <div class="avatar-small" id="userAvatar">学</div>
+          <div class="user-meta">
+            <div class="user-name" id="userName">体验用户</div>
+            <div class="user-sub" id="userSub">等待第一次诊断</div>
+          </div>
+          <div class="streak" id="userStreak" title="连续学习天数">0<span>d</span></div>
+        </div>
+        <div class="privacy">🔒 本地优先 · 数据可导出/删除</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="crumb" id="crumb">教练台 / 今日</div>
+          <h1 id="pageTitle">今天，先把方法调对。</h1>
+        </div>
+        <div class="topbar-right">
+          <div class="date" id="todayLabel"></div>
+          <button class="status-pill" id="llmPill" data-action="toggle-llm" title="点击查看 AI 增强状态">
+            <span class="dot"></span><span id="llmText">本地教练引擎</span>
+          </button>
+          <button class="icon-btn" data-action="reset" title="重置对话" aria-label="重置对话">↺</button>
+        </div>
+      </header>
+
+      <section class="view active" id="view-chat">
+        <div class="chat-shell">
+          <div class="chat-column">
+            <div class="chat-stream" id="chatStream" aria-live="polite"></div>
+            <div class="composer-wrap">
+              <div class="suggestions" id="suggestions"></div>
+              <form class="composer" id="composer" autocomplete="off">
+                <textarea id="messageInput" rows="1" placeholder="回答第 1 问：你最想解决的学习目标是什么？" aria-label="输入消息"></textarea>
+                <button class="send-btn" type="submit" aria-label="发送">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </form>
+              <div class="composer-note"><span>Enter 发送 · Shift + Enter 换行</span><span>三问未完成时，不会生成最终方案</span></div>
+            </div>
+          </div>
+          <aside class="context-column" id="contextPanel"></aside>
+        </div>
+      </section>
+
+      <section class="view" id="view-library">
+        <div class="view-head">
+          <div>
+            <div class="kicker">METHOD LIBRARY</div>
+            <h2>43 张方法卡，9 个领域</h2>
+            <p>不是“名人方法合集”，而是可执行、可验证、可退出的方法资产。</p>
+          </div>
+          <div class="search-wrap">
+            <span>⌕</span>
+            <input id="librarySearch" type="search" placeholder="搜方法、领域、卡点…" />
+          </div>
+        </div>
+        <div class="filter-row" id="domainFilters"></div>
+        <div class="method-grid" id="methodGrid"></div>
+      </section>
+
+      <section class="view" id="view-memory">
+        <div id="memoryContent"></div>
+      </section>
+
+      <section class="view" id="view-report">
+        <div id="reportContent"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modalRoot"></div>
+  <div id="toast" class="toast" role="status"></div>
+  <script>
+window.__METHODS__ = {"version":"1.0.0","updated":"2026-10-26","count":43,"evidenceLegend":{"A":"多项实验或元分析支持","B":"单项研究或专业训练共识","C":"实践者经验，待更多验证"},"domainStats":{"通用":15,"考试":15,"专业课":19,"编程/理工":8,"写作":6,"时间管理":5,"英语口语":11,"口头表达":12,"审美/化妆":7},"methods":[{"id":"active-recall","name":"主动回忆","en":"Active Recall","category":"记忆巩固","domains":["通用","考试","专业课"],"goals":["记忆","理解","考试"],"evidence":"A","evidence_note":"大量实验支持：提取练习比重复阅读更能促进长期保持。","time":20,"difficulty":2,"one_liner":"合上书，先逼自己把知识说出来，再回去查漏。","why":"提取本身会加固记忆；你缺的不是再看一遍，而是先证明自己会不会。","steps":["写下 3 个核心问题，合上资料","用白纸或口述回答，卡住也先不看书","对照资料补缺，标出卡点","24 小时后再测一次"],"materials":["空白回忆纸模板","3-2-1 自测题卡","卡点记录表"],"metric":"不看资料能复述 80% 的要点，卡点不超过 3 个","fail":["变成抄书","只回忆熟悉内容","不核对，错误被固化"],"switch_to":"concept-map","switch_when":"连续 2 次自测低于 60%，说明缺框架，先用概念图补结构。","source":"Roediger & Karpicke (2006); Karpicke & Blunt (2011)"},{"id":"spaced-repetition","name":"间隔重复","en":"Spaced Repetition","category":"记忆巩固","domains":["通用","考试","专业课"],"goals":["记忆","考试"],"evidence":"A","evidence_note":"间隔效应在 verbal recall 任务中反复被验证。","time":15,"difficulty":2,"one_liner":"在快要忘记的时候复习，而不是在已经会的时候重复。","why":"把复习排进日程，减少「临时抱佛脚」和「假熟悉」。","steps":["把内容拆成最小卡片","按 1/3/7/14 天排复习","每次先主动回忆再翻面","只保留答错的卡"],"materials":["间隔复习排期表","纸质/Anki 卡片模板","卡片质量检查表"],"metric":"到期卡片完成率 ≥90%，错误率逐轮下降","fail":["卡片太大","只翻不看","排期过密导致积压"],"switch_to":"active-recall","switch_when":"卡片越积越多时，先减量到每天 20 张，并回到主动回忆。","source":"Cepeda et al. (2006); Dunlosky et al. (2013)"},{"id":"feynman","name":"费曼讲解","en":"Feynman Technique","category":"理解建构","domains":["通用","专业课","编程/理工"],"goals":["理解","表达"],"evidence":"B","evidence_note":"自我解释与生成性学习有较多支持，具体流程属于实践框架。","time":25,"difficulty":3,"one_liner":"用外行能听懂的话讲一遍，卡住的地方就是漏洞。","why":"讲不出来通常不是记性差，而是概念之间还没有连起来。","steps":["选一个概念，写给完全不懂的人","用生活比喻解释，禁止堆术语","卡壳处标记，回去查","简化到 200 字以内"],"materials":["费曼讲解空白模板","外行追问清单","200 字压缩卡"],"metric":"外行能复述你的解释，并能回答 1 个追问","fail":["用更难的词解释","只写不讲","不查卡点"],"switch_to":"concept-map","switch_when":"如果连关系都讲不清，先用概念图梳理结构。","source":"Chi et al. (1994); 学习科学中的自我解释研究"},{"id":"interleaving","name":"交错练习","en":"Interleaving","category":"解题训练","domains":["通用","考试","编程/理工"],"goals":["解题","考试"],"evidence":"A","evidence_note":"混合练习在类别辨别和迁移任务中优于块状练习。","time":30,"difficulty":3,"one_liner":"把不同题型混着练，训练「先判断类型，再动笔」。","why":"考试不会按题型排队出现；你需要练的是识别和切换。","steps":["选 3 类相关题型","混合排列，不按类型刷","每题先判断类型再解","记录类型误判"],"materials":["混合题组模板","题型判断卡","类型误判记录表"],"metric":"类型判断正确率 ≥80%","fail":["基础没打牢就混合","题太难","不总结类型特征"],"switch_to":"concept-contrast","switch_when":"如果连基本概念都混，先做概念对比表。","source":"Rohrer & Taylor (2007); Dunlosky et al. (2013)"},{"id":"elaboration","name":"精细提问","en":"Elaborative Interrogation","category":"理解建构","domains":["通用","专业课","考试"],"goals":["理解","记忆"],"evidence":"A","evidence_note":"追问「为什么」能促进深层加工，但需要已有基础知识。","time":20,"difficulty":2,"one_liner":"对每个知识点追问「为什么是这样，而不是那样」。","why":"把新知识挂到你已有的解释网络上，记忆才有抓手。","steps":["对每个知识点问 3 个为什么","联系已知例子","写出反例或边界","用自己的话总结"],"materials":["5W1H 追问卡","例子/反例表","一句话总结模板"],"metric":"能提出并回答 3 个深层问题","fail":["问题太泛","只问事实","不写答案"],"switch_to":"active-recall","switch_when":"如果问题质量低，先用主动回忆暴露真正的漏洞。","source":"Pressley et al. (1987); Dunlosky et al. (2013)"},{"id":"dual-coding","name":"双编码","en":"Dual Coding","category":"理解建构","domains":["通用","专业课","写作"],"goals":["理解","记忆"],"evidence":"A","evidence_note":"图像与言语信息共同编码，通常优于单一文字通道。","time":25,"difficulty":2,"one_liner":"把文字变成图，再用图把内容讲回来。","why":"图不是装饰，是把关系画出来；画不出关系，说明还没懂。","steps":["读一段文字","画结构图或时间线","不看文字，用图复述","对照补图"],"materials":["结构图模板","时间线模板","看图复述卡"],"metric":"只看图能复述主要逻辑","fail":["图画得漂亮但不表达关系","图与文字脱节","图太复杂"],"switch_to":"concept-map","switch_when":"如果图表达不了关系，改用概念图并写连接词。","source":"Paivio (1986); Mayer (2009)"},{"id":"cornell","name":"康奈尔笔记","en":"Cornell Notes","category":"笔记系统","domains":["通用","考试","专业课"],"goals":["记忆","理解","复习"],"evidence":"B","evidence_note":"结构化笔记与复习线索有实践支持，效果取决于是否回看。","time":20,"difficulty":1,"one_liner":"把笔记分成线索、内容、总结三栏，让笔记能自测。","why":"笔记的价值不在记录，而在 24 小时后还能用它提问。","steps":["页面分三栏：线索/笔记/总结","听或读时只记关键词","课后 24 小时内补线索和总结","用线索栏自测"],"materials":["康奈尔笔记模板","线索问题卡","3 句话总结卡"],"metric":"总结栏能在 3 句话内概括，线索栏能自测","fail":["抄板书","总结拖延","线索栏空着"],"switch_to":"active-recall","switch_when":"如果笔记从不回看，直接改用主动回忆卡。","source":"Pauk (1962); 大学学习中心实践"},{"id":"pomodoro","name":"番茄专注","en":"Pomodoro","category":"专注管理","domains":["通用","时间管理"],"goals":["执行","专注"],"evidence":"B","evidence_note":"时间盒与打断管理有实践支持，核心是可见产出而非计时本身。","time":25,"difficulty":1,"one_liner":"25 分钟只做一件小事，然后离开屏幕 5 分钟。","why":"你需要的不是更长的学习时间，而是更少的切换成本。","steps":["写下一个可完成的小任务","25 分钟只做这件事","5 分钟离开屏幕","4 轮后休息 20 分钟"],"materials":["番茄任务卡","打断记录表","4 轮复盘表"],"metric":"每轮至少完成 1 个可见输出","fail":["任务太大","休息刷短视频","被打断不记录"],"switch_to":"tiny-habits","switch_when":"如果 25 分钟仍坐不住，改 15 分钟微番茄，先保证出现。","source":"Cirillo (1980s); 时间管理实践"},{"id":"tiny-habits","name":"微习惯锚定","en":"Tiny Habits","category":"行为设计","domains":["通用","时间管理"],"goals":["坚持","执行"],"evidence":"B","evidence_note":"行为设计与习惯形成有实践支持，适合解决启动阻力。","time":10,"difficulty":1,"one_liner":"把目标缩到 2 分钟，绑在一个已经稳定的日常动作后面。","why":"先让行为发生，再谈强度；靠意志力硬扛通常撑不过一周。","steps":["选一个已有习惯作为锚点","设计 2 分钟版本","固定触发句：做完 X 就做 Y","连续 7 天只要求出现"],"materials":["习惯锚点表","2 分钟版本卡","7 天打勾表"],"metric":"连续 7 天触发成功率 ≥80%","fail":["一开始就定 30 分钟","依赖意志力","目标太多"],"switch_to":"pomodoro","switch_when":"如果锚点不稳定，先固定起床或睡前流程，再谈学习。","source":"Fogg (2019); 行为设计实践"},{"id":"deliberate-practice","name":"刻意练习","en":"Deliberate Practice","category":"技能训练","domains":["通用","英语口语","口头表达","编程/理工","审美/化妆"],"goals":["技能","输出","提升"],"evidence":"A","evidence_note":"针对薄弱子技能、带即时反馈的练习是专长发展的核心条件之一。","time":40,"difficulty":4,"one_liner":"只练一个薄弱子技能，拿到反馈，立刻重做。","why":"重复已经会的内容很舒服，但不会让你变强。","steps":["找一位可反馈的教练或标准","只练一个薄弱子技能","即时反馈并重做","记录错误类型"],"materials":["子技能拆解表","反馈评分表","错误类型日志"],"metric":"同一子技能的错误率下降 30%","fail":["练整体不练局部","没有反馈","重复已会内容"],"switch_to":"video-review","switch_when":"如果找不到教练，用录像加评分表自评，先保证反馈闭环。","source":"Ericsson et al. (1993); Ericsson & Pool (2016)"},{"id":"past-paper-reverse","name":"真题逆向拆解","en":"Past Paper Reverse Engineering","category":"考试策略","domains":["考试","专业课"],"goals":["考试","提分"],"evidence":"B","evidence_note":"以测促学与考点分析结合，适合有真题的标准化考试。","time":45,"difficulty":3,"one_liner":"先做一套真题，再从错题倒推「到底该学什么」。","why":"从第一页开始复习，常常把时间花在已经会的内容上。","steps":["先做 1 套真题，不改答案","按考点给错题分类","反向标注教材或讲义页码","只学高频薄弱点"],"materials":["真题错题分类表","考点-页码对照表","高频薄弱点清单"],"metric":"高频考点清单覆盖 80% 错题","fail":["只刷题不归类","从第一页开始学","不复盘"],"switch_to":"concept-map","switch_when":"如果基础漏洞太多，先用概念图补框架，再回到真题。","source":"考试学实践; 以测促学研究"},{"id":"three-round-review","name":"三轮复习","en":"Three-Round Review","category":"考试策略","domains":["考试","专业课"],"goals":["考试","记忆"],"evidence":"B","evidence_note":"框架-回忆-模考的分轮结构，符合间隔与提取原则。","time":60,"difficulty":3,"one_liner":"第一轮搭框架，第二轮主动回忆，第三轮限时模考。","why":"三轮不是把书看三遍，而是三种不同强度的加工。","steps":["第一轮：框架加关键词","第二轮：主动回忆加错题","第三轮：限时模考加查漏"],"materials":["三轮复习看板","框架卡","模考记录表"],"metric":"三轮后模考分数提升 ≥15%","fail":["三轮都变成看书","没有时间盒","不复盘"],"switch_to":"timed-mock","switch_when":"如果时间不足，压缩为两轮：框架加模考。","source":"Dunlosky et al. (2013); 备考实践"},{"id":"concept-map","name":"考点概念图","en":"Concept Map","category":"理解建构","domains":["通用","考试","专业课"],"goals":["理解","记忆","框架"],"evidence":"A","evidence_note":"概念图对结构化知识和迁移有较多支持。","time":30,"difficulty":2,"one_liner":"把考点画成有连接词的关系网，而不是目录。","why":"考试题往往考关系；目录只告诉你有什么，概念图告诉你为什么连在一起。","steps":["中心写主题","列出 5-7 个一级概念","用箭头标关系并写连接词","闭眼复述整张图"],"materials":["概念图空白模板","连接词清单","闭眼复述卡"],"metric":"能不看图讲清概念间关系","fail":["变成树状目录","连接词空泛","图太大"],"switch_to":"concept-contrast","switch_when":"如果关系太复杂，先做两两对比表，再合并成图。","source":"Novak & Gowin (1984); Nesbit & Adesope (2006)"},{"id":"timed-mock","name":"限时模考","en":"Timed Mock Exam","category":"考试策略","domains":["考试","专业课"],"goals":["考试","速度"],"evidence":"B","evidence_note":"模拟测试条件能提升提取与时间分配能力。","time":90,"difficulty":4,"one_liner":"严格计时、不查资料，把考试当一次正式演练。","why":"会做和能在时间内做对，是两种能力。","steps":["严格计时，不查资料","模拟考场环境","交卷后先自评再对答案","记录时间分配"],"materials":["模考计时表","时间分配记录卡","自评-对答案表"],"metric":"规定时间内完成，时间分配偏差 <10%","fail":["中途查答案","不做时间记录","只对分数"],"switch_to":"past-paper-reverse","switch_when":"如果正确率低但时间够，先补基础；反之专门练速度。","source":"考试训练实践; 提取练习研究"},{"id":"error-autopsy","name":"错题尸检","en":"Error Autopsy","category":"考试策略","domains":["考试","专业课","编程/理工"],"goals":["考试","纠错"],"evidence":"B","evidence_note":"错误分类与重做是形成性评价中的常用高效做法。","time":30,"difficulty":2,"one_liner":"不只抄正确答案，要解剖「我为什么会错」。","why":"同一道题错三次，通常不是知识问题，而是错误类型没被看见。","steps":["抄题不抄答案","标注错误类型：知识/审题/计算/表达","写出正确思路和触发条件","3 天后重做"],"materials":["错题尸检表","错误类型标签","3 天后重做提醒卡"],"metric":"同类错误 7 天内不再犯","fail":["只抄答案","不分类","不复做"],"switch_to":"active-recall","switch_when":"如果错误类型分散，先用主动回忆做知识点诊断。","source":"Black & Wiliam (1998); 错题本实践"},{"id":"sleep-consolidation","name":"睡眠巩固","en":"Sleep Consolidation","category":"记忆巩固","domains":["通用","考试","时间管理"],"goals":["记忆","状态"],"evidence":"A","evidence_note":"睡眠对记忆巩固有稳定证据；不是熬夜的替代品。","time":30,"difficulty":1,"one_liner":"睡前只复习核心卡，睡够，早起先回忆。","why":"把复习塞进熬夜，通常是在用第二天的状态换今晚的安心。","steps":["睡前 30 分钟复习核心卡","不做新题","睡够 7 小时","早起先回忆昨晚内容"],"materials":["睡前核心卡","睡眠记录表","晨间回忆卡"],"metric":"晨间回忆正确率 ≥70%","fail":["熬夜补课","睡前刷手机","复习太满"],"switch_to":"spaced-repetition","switch_when":"如果睡眠不足，先修作息，不叠加新方法。","source":"Walker (2017); Diekelmann & Born (2010)"},{"id":"shadowing","name":"影子跟读","en":"Shadowing","category":"口语训练","domains":["英语口语","口头表达"],"goals":["口语","流利度","语音"],"evidence":"B","evidence_note":"二语口语训练中的常用方法，关键在于可理解输入加即时模仿。","time":25,"difficulty":2,"one_liner":"跟着真实语料同步说，练节奏、连读和语调。","why":"口语卡顿常常不是词汇不够，而是口腔没有形成节奏。","steps":["选 30-60 秒真实语料","盲听 1 遍抓大意","逐句跟读，模仿语音语调","录音对比，标 3 个卡点","脱稿复述"],"materials":["30-60 秒语料库","跟读打卡表","录音对比表","1 分钟复述卡"],"metric":"1 分钟录音中停顿 ≤5 次，3 个语块脱稿","fail":["只看字幕","跟读太快","不录音","选太难的材料"],"switch_to":"chunking","switch_when":"如果跟读流利但复述卡，说明输入没转成输出，改用语块串联加角色扮演。","source":"Cambridge English; 二语口语训练实践"},{"id":"self-talk","name":"自言自语独白","en":"Self-Talk","category":"口语训练","domains":["英语口语"],"goals":["口语","流利度"],"evidence":"C","evidence_note":"低门槛输出练习，适合降低开口焦虑；效果依赖持续反馈。","time":15,"difficulty":1,"one_liner":"用 3 句模板，把今天发生的事用英语说 60 秒。","why":"你不需要等「准备好了」才开口；先让输出成为日常。","steps":["设定一个日常场景","用 3 句模板自问自答","录音 30 秒","回听改 1 句"],"materials":["每日 3 句模板","60 秒计时卡","一句改写卡"],"metric":"连续说 60 秒，语法错误 ≤3 处","fail":["只背稿","不录音","追求完美不敢开口"],"switch_to":"role-play","switch_when":"如果只能背稿，改用情景角色扮演，逼出即兴组织。","source":"二语口语教学实践"},{"id":"role-play","name":"情景角色扮演","en":"Role Play","category":"口语训练","domains":["英语口语","口头表达"],"goals":["口语","应变","面试"],"evidence":"B","evidence_note":"情景化任务能促进语言使用与迁移，适合面试、演讲等目标场景。","time":30,"difficulty":3,"one_liner":"把真实场景演一遍，练「听懂-反应-表达」的完整链路。","why":"面试和真实对话不会按你的稿子走，你需要练应变。","steps":["选一个真实场景","写角色卡和目标","即兴对话 3 分钟","换角色再来一次","复盘卡点"],"materials":["场景角色卡","目标清单","对话复盘表"],"metric":"能在 3 分钟内完成目标，如问清信息或表达观点","fail":["写成剧本照读","难度过高","不复盘"],"switch_to":"chunking","switch_when":"如果词汇不够，先补高频语块，再回到角色扮演。","source":"Cambridge English; 任务型语言教学"},{"id":"chunking","name":"语块串联","en":"Chunking","category":"口语训练","domains":["英语口语","写作"],"goals":["口语","表达","词汇"],"evidence":"B","evidence_note":"语块教学对口语流利度和搭配准确性有实践支持。","time":20,"difficulty":2,"one_liner":"背「能直接用的整块表达」，而不是孤立单词。","why":"流利不是单词反应快，而是整块语言随取随用。","steps":["从语料中摘 10 个高频语块","按功能分类","每个语块造 2 个自己的句子","串成 1 分钟独白"],"materials":["高频语块卡","功能分类表","1 分钟独白模板"],"metric":"能脱稿使用 8/10 个语块","fail":["背单词不背搭配","语块太长","不输出"],"switch_to":"role-play","switch_when":"如果语块用不出来，改用角色扮演，在真实任务里调用。","source":"Lewis (1993); 语块教学实践"},{"id":"record-review","name":"录音回听","en":"Record & Review","category":"口语训练","domains":["英语口语","口头表达"],"goals":["口语","表达","纠错"],"evidence":"B","evidence_note":"录像/录音反馈是技能训练中的高效形成性评价手段。","time":15,"difficulty":2,"one_liner":"录 1 分钟，只标 3 个问题，重录同一话题。","why":"你以为自己说了什么，和录音里实际说了什么，往往不一样。","steps":["录 1 分钟即兴表达","回听只标 3 个问题","重录同一话题","对比两次转写"],"materials":["1 分钟录音卡","三点回听表","两次对比表"],"metric":"第二次录音问题减少 ≥1 个","fail":["只听不记","一次标 10 个问题","不重录"],"switch_to":"shadowing","switch_when":"如果听不出问题，先用影子跟读建立标准音感。","source":"形成性评价研究; 口语教学实践"},{"id":"321-impromptu","name":"3-2-1 即兴","en":"3-2-1 Impromptu","category":"表达训练","domains":["口头表达","英语口语"],"goals":["表达","应变","演讲"],"evidence":"B","evidence_note":"结构化即兴练习能降低表达焦虑，提升观点组织速度。","time":15,"difficulty":2,"one_liner":"3 秒想结构，2 分钟讲，1 句话收尾。","why":"紧张时大脑会失去结构；先把结构变成肌肉记忆。","steps":["抽题，3 秒想结构","2 分钟讲：1 个观点加 2 个例子","1 句话收尾","录像回看"],"materials":["即兴题卡 30 张","结构提示卡","录像回看表"],"metric":"2 分钟内结构完整，有观点、例子和收尾","fail":["追求金句","没有结构","不看录像"],"switch_to":"story-arc","switch_when":"如果一开口就乱，先用故事弧线模板把内容压成三行。","source":"Toastmasters Table Topics; 即兴表达训练"},{"id":"story-arc","name":"故事弧线","en":"Story Arc","category":"表达训练","domains":["口头表达","写作"],"goals":["表达","演讲","写作"],"evidence":"B","evidence_note":"叙事结构能提升听众记忆与情感连接，是演讲训练常用框架。","time":20,"difficulty":2,"one_liner":"用「冲突-行动-结果」三行，把观点讲成故事。","why":"人记不住一堆道理，但记得住一个具体的转折。","steps":["用冲突-行动-结果列 3 行","每行只写关键词","讲 90 秒","补一个细节"],"materials":["故事三行模板","细节筛选卡","90 秒计时卡"],"metric":"听众能复述你的冲突和结果","fail":["流水账","细节太多","没有冲突"],"switch_to":"321-impromptu","switch_when":"如果故事平淡，先用 3-2-1 即兴练结构，再加叙事。","source":"Duarte (2010); 叙事表达实践"},{"id":"video-review","name":"镜头回放","en":"Video Review","category":"表达训练","domains":["口头表达","英语口语","审美/化妆"],"goals":["表达","技能","纠错"],"evidence":"B","evidence_note":"视频反馈能暴露自我感知与实际表现的差距。","time":20,"difficulty":2,"one_liner":"录 3 分钟，静音看一遍，开声音再看一遍，只改 1 个问题。","why":"你需要的不是「感觉还行」，而是可见的改进证据。","steps":["录 3 分钟展示","静音看：手势和站姿","开声音看：语速和停顿","只改 1 个问题，重录"],"materials":["三分钟录像卡","静音观察表","单点改进卡"],"metric":"重录后目标问题明显减少","fail":["一次改 10 个","只看缺点","不重录"],"switch_to":"audience-qa","switch_when":"如果自评不准，找同伴用评分表互评，再回到录像。","source":"形成性评价; 演讲训练实践"},{"id":"breath-pause","name":"呼吸停顿","en":"Breath & Pause","category":"表达训练","domains":["口头表达","英语口语"],"goals":["表达","状态","流利度"],"evidence":"B","evidence_note":"呼吸与停顿训练是演讲和口语中的常规技巧，能改善紧张与语速。","time":10,"difficulty":1,"one_liner":"用呼吸稳住语速，用停顿代替「嗯、然后」。","why":"紧张时语速会变快；停顿不是卡壳，是让听众跟上。","steps":["吸气 4 拍、屏息 2 拍、呼气 6 拍，做 3 轮","每句话结束停 1 拍","段落之间停 2 拍","录音检查语速"],"materials":["呼吸节拍卡","停顿标记稿","语速记录表"],"metric":"语速稳定在每分钟 180-220 字，停顿可控","fail":["憋气","停顿太长","只练不录"],"switch_to":"321-impromptu","switch_when":"如果紧张来自内容不熟，先练结构，再练呼吸。","source":"演讲训练实践; 语音训练"},{"id":"audience-qa","name":"观众预演","en":"Audience Q&A Rehearsal","category":"表达训练","domains":["口头表达","英语口语"],"goals":["表达","答辩","应变"],"evidence":"B","evidence_note":"预演与提问训练能提升答辩表现和临场应变。","time":25,"difficulty":2,"one_liner":"先替观众问 5 个最狠的问题，再练习 30 秒答清。","why":"答辩的胜负常常不在讲稿，而在被追问的那 30 秒。","steps":["列出观众最可能问的 5 个问题","每个写 1 句回答","找同伴模拟提问","记录答不上来的问题"],"materials":["五个狠问题清单","30 秒回答模板","模拟提问记录表"],"metric":"5 个问题中至少 4 个能 30 秒内答清","fail":["只准备答案不模拟","防御性回答","不记录"],"switch_to":"video-review","switch_when":"如果问题太发散，先回到目标受众，用录像检查表达。","source":"答辩训练实践; Toastmasters"},{"id":"case-rule","name":"案例-规则对照","en":"Case-Rule Mapping","category":"专业课","domains":["专业课","考试"],"goals":["理解","应用","考试"],"evidence":"B","evidence_note":"案例教学在法学、会计、商科等专业教育中有广泛实践。","time":35,"difficulty":3,"one_liner":"先自己做案例判断，再对照准则或法条，找出差距。","why":"专业课考的是「在具体情境里调用规则」，不是背目录。","steps":["读一个真实案例","先写自己的判断","对照准则、法条或标准","标出判断与规则的差距","用一句话总结触发条件"],"materials":["案例-规则对照表","判断先写卡","触发条件总结卡"],"metric":"能独立完成案例判断，并说出依据","fail":["先看答案","只背规则","不写判断"],"switch_to":"active-recall","switch_when":"如果规则记不住，先用主动回忆把规则变成可提取状态。","source":"案例教学法; CPA/ACCA 案例训练"},{"id":"formula-derivation","name":"公式推导复现","en":"Derivation Rebuild","category":"专业课","domains":["专业课","编程/理工","考试"],"goals":["理解","解题"],"evidence":"B","evidence_note":"生成性学习与自我解释支持「从零推导」的练习方式。","time":25,"difficulty":3,"one_liner":"合上书，从零把公式推一遍，每一步写理由。","why":"背公式只能应付熟悉题；推导能力才能迁移。","steps":["合上书，从零推导公式","每一步写理由","卡住处标记","对照教材补漏","用数值例子验证"],"materials":["推导空白纸","每步理由卡","数值验证表"],"metric":"不看书画出推导链，并解释每一步","fail":["背公式","跳步","不做数值验证"],"switch_to":"concept-map","switch_when":"如果推导链太长，先用概念图理清变量关系。","source":"Chi et al. (1994); 理工科教学实践"},{"id":"concept-contrast","name":"概念对比表","en":"Contrast Table","category":"专业课","domains":["专业课","考试","通用"],"goals":["理解","辨析","记忆"],"evidence":"A","evidence_note":"对比与辨别练习能减少概念混淆，促进迁移。","time":20,"difficulty":2,"one_liner":"把易混概念放在同一张表里，逼自己举正例和反例。","why":"「好像都懂」通常意味着边界不清。","steps":["选 2-3 个易混概念","做四维对比：定义、条件、例子、反例","闭卷填表","用一句话说出区别"],"materials":["四维对比表","正例反例卡","一句话区别卡"],"metric":"能举出正例和反例各 1 个","fail":["只列定义","不举反例","表太大"],"switch_to":"concept-map","switch_when":"如果概念关系复杂，改用概念图看整体结构。","source":"Dunlosky et al. (2013); 概念学习研究"},{"id":"teach-back","name":"同伴教学","en":"Teach-Back","category":"专业课","domains":["专业课","通用","口头表达"],"goals":["理解","表达","记忆"],"evidence":"A","evidence_note":"同伴教学与学习金字塔中的「教别人」有较多实践支持。","time":30,"difficulty":2,"one_liner":"讲给一个同伴听，让他提问，再回去补讲不清的地方。","why":"讲得清，才是真的懂；同伴的追问会暴露盲区。","steps":["选一个知识点","讲给同伴或录音","让对方提问","回答不了的地方回去补","再讲一遍"],"materials":["讲解提纲卡","同伴提问清单","二次讲解记录表"],"metric":"对方能用自己的话复述，并问出 1 个好问题","fail":["照 PPT 念","不讲例子","不让对方提问"],"switch_to":"feynman","switch_when":"如果没人可讲，用费曼法录音，自己扮演外行。","source":"Topping (1996); 同伴教学研究"},{"id":"clinical-reasoning","name":"病例推演","en":"Clinical Reasoning","category":"专业课","domains":["专业课","考试"],"goals":["应用","推理","考试"],"evidence":"B","evidence_note":"临床推理训练是医学教育的核心方法，也可迁移到诊断类专业课。","time":40,"difficulty":4,"one_liner":"先写假设，再列支持/反对证据，最后说下一步检查。","why":"专业课的高分答案不是「猜对」，而是「证据链完整」。","steps":["读病例，先写初步假设","列出支持与反对证据","提出下一步检查","对照标准路径","复盘偏差"],"materials":["病例推演表","证据链卡","标准路径对照表"],"metric":"能说出假设、证据和下一步，而非只给结论","fail":["直接猜诊断","忽略阴性证据","不复盘"],"switch_to":"concept-map","switch_when":"如果基础知识不足，先补概念图，再练病例。","source":"医学教育中的临床推理训练"},{"id":"build-small","name":"最小项目拆解","en":"Build Small","category":"项目实践","domains":["编程/理工","专业课"],"goals":["技能","项目","应用"],"evidence":"B","evidence_note":"项目式学习与最小可行产品方法在编程教育中广泛使用。","time":60,"difficulty":3,"one_liner":"先做一个 24 小时内能跑起来的最小版本，再加功能。","why":"看完整套语法再动手，通常会在环境配置阶段放弃。","steps":["把项目拆成最小可运行版本","只实现 1 个核心功能","跑通后再加 1 个","写 README 记录卡点"],"materials":["最小版本拆解表","功能切片卡","README 模板"],"metric":"24 小时内有一个能运行的版本","fail":["先学完整语法","范围太大","不写文档"],"switch_to":"debug-log","switch_when":"如果卡在报错，先用调试日志定位，不要继续加功能。","source":"项目式学习; MVP 实践"},{"id":"debug-log","name":"调试日志","en":"Debug Log","category":"项目实践","domains":["编程/理工","专业课"],"goals":["技能","纠错"],"evidence":"B","evidence_note":"系统化调试是软件工程中的核心实践，强调一次只改一个变量。","time":30,"difficulty":3,"one_liner":"记录报错原文，列 3 个假设，一次只改一个变量。","why":"盲目改代码会把「一个 bug」变成「三个 bug」。","steps":["记录报错原文","写 3 个可能原因","每次只改一个变量","记录结果","总结触发条件"],"materials":["调试日志模板","假设排序卡","最小复现清单"],"metric":"同类报错能在 10 分钟内定位","fail":["盲目改代码","一次改多处","不记录"],"switch_to":"build-small","switch_when":"如果基础概念不清，先退回最小示例，别在项目里硬猜。","source":"软件工程实践; 系统化调试"},{"id":"whiteboard-recall","name":"白板复现","en":"Whiteboard Recall","category":"项目实践","domains":["编程/理工","专业课"],"goals":["理解","记忆","系统设计"],"evidence":"B","evidence_note":"从记忆中重建结构图，是提取练习在系统知识上的应用。","time":25,"difficulty":3,"one_liner":"合上资料，在白板上画出系统结构，再对照补全。","why":"能画出来，说明你掌握了模块之间的关系，而不是只会局部代码。","steps":["合上书，白板画系统图","标出模块和数据流","卡住处用红笔标记","对照资料补全","第二天再画一次"],"materials":["系统图空白模板","数据流标记卡","二次复现表"],"metric":"不看资料画出 80% 结构","fail":["抄图","只画不解释","不复习"],"switch_to":"concept-map","switch_when":"如果结构太大，先画一级模块，再逐层展开。","source":"提取练习; 系统设计教学"},{"id":"imitate-rewrite","name":"模仿-拆解-重写","en":"Imitate, Deconstruct, Rewrite","category":"写作训练","domains":["写作","口头表达"],"goals":["写作","表达"],"evidence":"B","evidence_note":"范文拆解与重写是写作教学中的常用有效实践。","time":40,"difficulty":3,"one_liner":"拆一篇范文的结构和句式，合上它，写自己的题目，再对照重写。","why":"只看范文不会让你会写；拆完再重写，才会把技巧变成自己的。","steps":["选一篇范文","拆结构、句式和过渡","合上范文写自己的题目","对照差异","重写 1 段"],"materials":["范文拆解表","结构迁移卡","重写对比表"],"metric":"能复现范文的 3 个结构技巧","fail":["抄句子","只读不写","不对比"],"switch_to":"sentence-bank","switch_when":"如果写不出，先做句型银行，降低输出门槛。","source":"写作教学实践; 范文模仿研究"},{"id":"pyramid","name":"论证金字塔","en":"Argument Pyramid","category":"写作训练","domains":["写作","口头表达"],"goals":["写作","表达","逻辑"],"evidence":"B","evidence_note":"金字塔结构在商务写作与表达训练中广泛使用，强调结论先行。","time":25,"difficulty":2,"one_liner":"先写结论，再列 3 个理由，每个理由配证据。","why":"读者和听众都想知道「所以呢」；结论先行能降低理解成本。","steps":["先写结论 1 句","列 3 个理由","每个理由配证据","预判反方","按金字塔顺序讲"],"materials":["金字塔空白模板","理由-证据卡","反方预判表"],"metric":"听众能一句话复述你的结论","fail":["先铺垫后结论","理由重复","无证据"],"switch_to":"story-arc","switch_when":"如果结论不清，先做问题定义，或改用故事弧线找冲突。","source":"Minto (1987); 结构化写作"},{"id":"sentence-bank","name":"句型银行","en":"Sentence Bank","category":"写作训练","domains":["写作","英语口语"],"goals":["写作","表达","词汇"],"evidence":"C","evidence_note":"句型积累是输出训练的低门槛支架，需配合真实使用才有效。","time":20,"difficulty":1,"one_liner":"收集 20 个高频功能句，按场景分类，逼自己在输出里用掉。","why":"写作卡顿常常不是没想法，而是没有可调用的句式。","steps":["收集 20 个高频功能句","按场景分类","每个句型造 3 个句子","在写作或口语中强制使用"],"materials":["功能句型卡","场景分类表","本周使用清单"],"metric":"一周内在输出中使用 10 个新句型","fail":["只收藏","句子太难","不使用"],"switch_to":"active-recall","switch_when":"如果记不住，改用主动回忆加间隔重复。","source":"二语写作教学实践"},{"id":"look-deconstruct","name":"仿妆拆解","en":"Look Deconstruction","category":"形象实操","domains":["审美/化妆"],"goals":["技能","审美","实操"],"evidence":"C","evidence_note":"来自专业化妆训练的结构化拆解方法，强调结构而非产品同款。","time":45,"difficulty":3,"one_liner":"把一个妆容拆成底妆、眉眼、修容、唇，再按结构复现。","why":"照着买同款不等于会画；你要复现的是结构和比例。","steps":["选一个妆容，分区截图","标注底妆、眉眼、修容、唇","按顺序复现","拍照对比","只改一个差异"],"materials":["妆容分区拆解表","结构复现卡","拍照对比模板"],"metric":"能复现 70% 的关键结构，而非只模仿颜色","fail":["一上来买同款","忽略脸型和光线","不对比"],"switch_to":"half-face","switch_when":"如果总画脏，先练半脸对比，把差异控制在一个变量。","source":"专业化妆训练; Lisa Eldridge 公开教程"},{"id":"half-face","name":"半脸对比","en":"Half-Face Comparison","category":"形象实操","domains":["审美/化妆"],"goals":["技能","纠错"],"evidence":"C","evidence_note":"对照实验思路在化妆练习中的应用：控制变量、同光对比。","time":30,"difficulty":2,"one_liner":"只做半张脸，同一光线拍照，对比左右差异。","why":"全脸一起改，你永远不知道是哪一个动作起了作用。","steps":["只做半张脸","同一光线拍照","对比左右差异","记录 3 个差异","下一次只改 1 个"],"materials":["半脸记录表","同光拍照卡","单变量改进卡"],"metric":"左右差异减少到 1 个主要问题","fail":["两边同时改","光线不同","不记录"],"switch_to":"look-deconstruct","switch_when":"如果差异太多，先回到仿妆拆解，建立整体结构。","source":"化妆训练实践; 对照练习法"},{"id":"light-face","name":"光线-脸型诊断","en":"Light & Face Diagnosis","category":"形象实操","domains":["审美/化妆"],"goals":["审美","实操"],"evidence":"C","evidence_note":"专业化妆中的光线与脸型分析，属于实践性知识。","time":25,"difficulty":2,"one_liner":"在自然光、暖光、冷光下各拍一张，找出阴影和色差。","why":"同一个妆在不同光线下效果完全不同；先诊断，再下笔。","steps":["在自然光、暖光、冷光下各拍一张","标出阴影和肤色变化","调整底妆和修容位置","再拍对比"],"materials":["三光拍摄卡","阴影标记图","调整对比表"],"metric":"能在不同光线下保持妆面干净","fail":["只在滤镜下看","忽略脖子色差","一次改太多"],"switch_to":"product-match","switch_when":"如果底妆总不贴，先做肤质和产品匹配。","source":"专业化妆训练; 光线分析实践"},{"id":"product-match","name":"产品-肤质匹配","en":"Product-Skin Match","category":"形象实操","domains":["审美/化妆"],"goals":["实操","选品"],"evidence":"C","evidence_note":"基于肤质与成分的匹配方法，需注意个体差异与过敏风险。","time":20,"difficulty":2,"one_liner":"先记录肤质和敏感点，再做局部试用，只保留一个产品。","why":"博主推荐是别人的脸；你的肤质和气候才是变量。","steps":["记录肤质、肤色、敏感点","列 3 个候选产品","做局部试用 48 小时","记录持妆、氧化、刺激","只保留 1 个"],"materials":["肤质档案卡","48 小时试用表","产品淘汰表"],"metric":"找到 1 个 48 小时无刺激、持妆达标的产品","fail":["一次换全套","只看博主推荐","不记录"],"switch_to":"routine-freeze","switch_when":"如果反复过敏，先看皮肤科；不要用化妆流程硬扛。","source":"皮肤科学常识; 化妆品功效评价实践"},{"id":"routine-freeze","name":"流程固化","en":"Routine Freeze","category":"形象实操","domains":["审美/化妆","时间管理"],"goals":["实操","效率"],"evidence":"C","evidence_note":"流程标准化与计时练习，适合把技能变成稳定的日常输出。","time":15,"difficulty":1,"one_liner":"把流程拆成 5 步，连续 3 天同一顺序，第 4 天计时盲做。","why":"会画一次不算会；能在 15 分钟内稳定完成，才是可用的技能。","steps":["把流程拆成 5 步","每步限时","连续 3 天同一顺序","第 4 天计时盲做","固定成 15 分钟流程"],"materials":["五步流程卡","计时表","遗漏检查表"],"metric":"15 分钟内完成，步骤遗漏 ≤1","fail":["每天换产品","步骤太多","不计时"],"switch_to":"half-face","switch_when":"如果总超时，先删掉非必要步骤，再练半脸。","source":"技能训练实践; 标准化流程"},{"id":"weekly-review","name":"周复盘","en":"Weekly Review","category":"元认知","domains":["通用","时间管理"],"goals":["坚持","规划","元认知"],"evidence":"B","evidence_note":"结构化复盘能提升自我调节学习能力，关键在于形成下一步行动。","time":20,"difficulty":1,"one_liner":"每周 20 分钟，回答「什么有效、什么无效、下周改什么」。","why":"没有复盘，你只是重复同一周；复盘才能把经验变成方法。","steps":["看本周完成率","找出最有效的一件事","找出最大阻力","只定 1 个下周调整"],"materials":["周复盘四问卡","完成率看板","下周单点调整卡"],"metric":"每周产出 1 个可执行的调整，而不是一堆反思","fail":["写成情绪日记","列太多问题","没有下一步"],"switch_to":"tiny-habits","switch_when":"如果连复盘都坚持不了，先把复盘缩成 2 分钟微习惯。","source":"Zimmerman (2002); 自我调节学习"}]};
+</script>
+<script>
+/* 学法实验室 · 规则引擎
+ * 设计原则：门槛、匹配、换法由确定性逻辑保证；语言表达可交给 LLM 增强。
+ * 这样既不会“聊着聊着忘了原则”，也能让推荐可解释、可复现。
+ */
+
+const DOMAINS = ["通用", "考试", "英语口语", "口头表达", "专业课", "编程/理工", "写作", "审美/化妆", "时间管理"];
+
+const DOMAIN_META = {
+  "通用": { emoji: "🧩", color: "#2F6B57" },
+  "考试": { emoji: "📝", color: "#C25B3F" },
+  "英语口语": { emoji: "🗣️", color: "#2E6F9E" },
+  "口头表达": { emoji: "🎤", color: "#9A5B8C" },
+  "专业课": { emoji: "📚", color: "#7A6236" },
+  "编程/理工": { emoji: "💻", color: "#3D6B8A" },
+  "写作": { emoji: "✍️", color: "#8A5A44" },
+  "审美/化妆": { emoji: "💄", color: "#B4556E" },
+  "时间管理": { emoji: "⏱️", color: "#5B6B4A" },
+};
+
+const PREFERRED = {
+  "英语口语": "shadowing",
+  "口头表达": "321-impromptu",
+  "审美/化妆": "half-face",
+  "编程/理工": "build-small",
+  "写作": "imitate-rewrite",
+  "考试": "past-paper-reverse",
+  "专业课": "case-rule",
+  "通用": "active-recall",
+  "时间管理": "pomodoro",
+};
+
+function detectDomain(text) {
+  const t = String(text || "").toLowerCase();
+  if (/化妆|妆容|底妆|眼妆|仿妆|通勤妆|遮瑕|修容|口红|肤质/.test(t)) return "审美/化妆";
+  if (/英语|英文|口语|雅思|托福|雅思口语|面试.*(说|讲|英文)|english|speaking|interview/.test(t)) return "英语口语";
+  if (/演讲|展示|答辩|汇报|口头|表达|pre|presentation|讲台|路演/.test(t)) return "口头表达";
+  if (/编程|代码|算法|计算机|前端|后端|python|java|项目|debug|开发/.test(t)) return "编程/理工";
+  if (/写作|论文|作文|文案|essay|writing/.test(t)) return "写作";
+  if (/审计|会计|法学|法律|医学|临床|金融|专业|期末|考研|考试|复习|备考|证书|cpa|acca/.test(t)) {
+    return /期末|考研|考试|复习|备考|证书|cpa|acca/.test(t) ? "考试" : "专业课";
+  }
+  if (/时间|拖延|专注|坚持|计划|效率/.test(t)) return "时间管理";
+  return "通用";
+}
+
+function parseMinutes(text) {
+  const t = String(text || "");
+  const min = t.match(/(\d+)\s*(分钟|min|mins|minutes)/i);
+  if (min) return Math.max(5, parseInt(min[1], 10));
+  const hour = t.match(/(\d+(?:\.\d+)?)\s*(小时|h|hr|hours?)/i);
+  if (hour) return Math.max(5, Math.round(parseFloat(hour[1]) * 60));
+  if (/半小时/.test(t)) return 30;
+  if (/一小时|1\s*小时/.test(t)) return 60;
+  return 30;
+}
+
+function parseDays(text) {
+  const t = String(text || "");
+  const week = t.match(/(\d+)\s*(周|星期|weeks?)/i);
+  if (week) return parseInt(week[1], 10) * 7;
+  const day = t.match(/(\d+)\s*(天|日|days?)/i);
+  if (day) return parseInt(day[1], 10);
+  const month = t.match(/(\d+)\s*(个月|月|months?)/i);
+  if (month) return parseInt(month[1], 10) * 30;
+  if (/明天|后天|下周/.test(t)) return 7;
+  return 21;
+}
+
+function detectLevel(baseline) {
+  const t = String(baseline || "");
+  if (/零基础|没学过|小白|5\.0|5\.5|4\.5|不及格|60|很差|从零|不敢|开不了口/.test(t)) return "起步";
+  if (/熟练|90|85|7\.5|8\.0|很好|流利|专业|资深/.test(t)) return "进阶";
+  return "有基础";
+}
+
+function buildProfile(answers, name = "体验用户") {
+  const [goal = "", baseline = "", constraints = ""] = answers;
+  const domain = detectDomain(`${goal} ${baseline} ${constraints}`);
+  return {
+    name,
+    goal: goal.trim(),
+    baseline: baseline.trim(),
+    constraints: constraints.trim(),
+    domain,
+    minutes: parseMinutes(`${constraints} ${goal}`),
+    deadline: parseDays(`${goal} ${constraints}`),
+    level: detectLevel(baseline),
+    failedMethods: [],
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function matchMethods(methods, profile) {
+  const preferred = PREFERRED[profile.domain];
+  const scored = methods.map((m) => {
+    let score = 0;
+    const reasons = [];
+    if (m.domains.includes(profile.domain)) {
+      score += 45;
+      reasons.push(`领域匹配：${profile.domain}`);
+    }
+    if (m.domains.includes("通用")) score += 6;
+    if (m.goals.some((g) => profile.goal.includes(g))) {
+      score += 8;
+      reasons.push("目标关键词吻合");
+    }
+    if (m.evidence === "A") score += 10;
+    else if (m.evidence === "B") score += 6;
+    else score += 2;
+    if (m.time <= profile.minutes + 5) {
+      score += 10;
+      reasons.push(`时间成本 ${m.time} 分钟，适配你的 ${profile.minutes} 分钟`);
+    } else if (m.time > profile.minutes * 2) {
+      score -= 12;
+      reasons.push(`时间成本 ${m.time} 分钟，超出你的预算`);
+    }
+    if (profile.level === "起步" && m.difficulty >= 4) score -= 10;
+    if (profile.deadline <= 21 && ["past-paper-reverse", "timed-mock", "three-round-review"].includes(m.id)) {
+      score += 12;
+      reasons.push("临近截止，优先考试策略");
+    }
+    if (preferred === m.id) {
+      score += 18;
+      reasons.push("该场景的首选微试验");
+    }
+    if (profile.failedMethods?.includes(m.id)) {
+      score -= 40;
+      reasons.push("你之前试过且效果不佳");
+    }
+    return { ...m, fit: Math.max(0, Math.min(99, Math.round(score))), reasons };
+  });
+  scored.sort((a, b) => b.fit - a.fit || a.difficulty - b.difficulty);
+  return scored.slice(0, 3);
+}
+
+function buildDiagnosis(profile, method) {
+  const risk = (() => {
+    const t = `${profile.baseline} ${profile.constraints}`;
+    if (/没时间|忙|加班|课多|碎片|打断|宿舍/.test(t)) return "时间碎片化，计划容易被现实打断";
+    if (/卡|不敢|紧张|忘|开不了口|语法|错/.test(t)) return "输出焦虑与提取困难，输入多但输出少";
+    if (/拖延|坚持|三分钟热度|懒/.test(t)) return "启动阻力大于学习难度，需要先降低门槛";
+    return "缺少可量化的反馈，难以判断方法是否真的有效";
+  })();
+  const readiness = Math.max(45, Math.min(92, 70 + (profile.deadline <= 21 ? 8 : 0) + (profile.minutes >= 30 ? 6 : -4)));
+  return {
+    title: "学情判断",
+    headline: "你缺的不是更多方法，而是一个能验证效果的闭环。",
+    summary: `目标「${profile.goal}」是具体的；你的起点是「${profile.baseline}」；每天可投入约 ${profile.minutes} 分钟，截止约 ${profile.deadline} 天。`,
+    bullets: [
+      { label: "目标清晰度", value: profile.goal.length > 12 ? "较高" : "一般，建议再具体一点" },
+      { label: "当前起点", value: `${profile.level} · ${profile.domain}` },
+      { label: "主要风险", value: risk },
+      { label: "匹配准备度", value: `${readiness}/100` },
+    ],
+    prescription: `先用「${method.name}」做 3 天微试验。不要一次改所有习惯，只验证一件事：这个方法能不能让你今天产出可检查的结果。`,
+    readiness,
+  };
+}
+
+const TASK_TEMPLATES = {
+  "英语口语": (m) => [
+    { title: "选一段真实语料", desc: "30-60 秒，盲听 1 遍抓大意；先不要看字幕。", minutes: 5, output: "一句大意" },
+    { title: "影子跟读 3 遍", desc: "逐句模仿语音语调，最后录 1 分钟；卡住也继续。", minutes: 15, output: "1 分钟录音" },
+    { title: "回听标 3 个卡点", desc: "只标 3 个，重录一次；不要一次改 10 个问题。", minutes: 5, output: "3 个卡点 + 重录" },
+  ],
+  "口头表达": (m) => [
+    { title: "抽题写 3 行结构", desc: "冲突 / 行动 / 结果，每行只写关键词。", minutes: 5, output: "3 行结构卡" },
+    { title: "录 2 分钟即兴", desc: "不看稿，按结构讲完；允许不完美。", minutes: 12, output: "2 分钟录像" },
+    { title: "回看只改 1 个问题", desc: "静音看手势，开声音听停顿，只选一个改。", minutes: 8, output: "1 条改进 + 重录" },
+  ],
+  "审美/化妆": (m) => [
+    { title: "记录肤质与光线", desc: "自然光下拍一张素颜，记下肤质、敏感点、色差。", minutes: 5, output: "肤质/光线档案" },
+    { title: "半脸对比练习", desc: "只做半张脸，按底妆-眉眼-修容-唇的顺序。", minutes: 20, output: "半脸成品" },
+    { title: "同光拍照对比", desc: "同一光线拍左右脸，只记录 3 个差异。", minutes: 5, output: "3 个差异 + 下次单点改进" },
+  ],
+  "考试": (m) => [
+    { title: "做 10 道真题/自测", desc: "限时 10 分钟，不查资料，先暴露真实水平。", minutes: 10, output: "10 道题的答案" },
+    { title: "错题尸检", desc: "标错误类型：知识 / 审题 / 计算 / 表达；写触发条件。", minutes: 20, output: "错题分类表" },
+    { title: "主动回忆 3 个考点", desc: "合上资料，用白纸复述；卡住处标红。", minutes: 5, output: "3 个考点 + 卡点" },
+  ],
+  "专业课": (m) => [
+    { title: "选一个真实案例", desc: "先写自己的判断，不要先看答案。", minutes: 8, output: "一段判断" },
+    { title: "案例-规则对照", desc: "对照准则/法条/标准，标出判断与规则的差距。", minutes: 18, output: "对照表" },
+    { title: "用一句话总结", desc: "写出「什么条件下，适用什么规则」。", minutes: 4, output: "一句触发条件" },
+  ],
+  "编程/理工": (m) => [
+    { title: "写最小版本范围", desc: "只保留 1 个核心功能，写清不做什么。", minutes: 8, output: "MVP 范围卡" },
+    { title: "实现并跑通", desc: "先让它在本地跑起来，不追求完整。", minutes: 35, output: "可运行的最小版本" },
+    { title: "写调试日志", desc: "记录 1 个卡点、3 个假设、最后怎么解决。", minutes: 7, output: "1 条调试日志" },
+  ],
+  "写作": (m) => [
+    { title: "拆一篇范文", desc: "只拆结构、过渡和 3 个句式，不抄句子。", minutes: 8, output: "范文拆解表" },
+    { title: "写 1 段自己的内容", desc: "合上范文，用自己的题目写 200 字。", minutes: 22, output: "200 字初稿" },
+    { title: "对照重写", desc: "只改 1 个结构问题，重写开头或结尾。", minutes: 10, output: "1 段重写" },
+  ],
+  "时间管理": (m) => [
+    { title: "写下一个 25 分钟任务", desc: "必须小到能看见完成结果。", minutes: 3, output: "1 个任务" },
+    { title: "无切换专注", desc: "25 分钟只做这一件事，打断就记下来。", minutes: 25, output: "1 个可见产出" },
+    { title: "记录打断", desc: "写下打断来源，不评价自己。", minutes: 2, output: "打断清单" },
+  ],
+  "通用": (m) => [
+    { title: "写下 3 个核心问题", desc: "围绕今天的内容，问题要能自测。", minutes: 5, output: "3 个问题" },
+    { title: "合上资料主动回忆", desc: "用白纸或口述回答，卡住也先不看书。", minutes: 20, output: "一页回忆稿" },
+    { title: "对照补缺", desc: "只补卡点，不重抄全部内容。", minutes: 5, output: "3 个卡点" },
+  ],
+};
+
+const TASK_OVERRIDES = {
+  shadowing: () => TASK_TEMPLATES["英语口语"](),
+  chunking: () => [
+    { title: "摘 10 个高频语块", desc: "从今天的语料或面试题里摘 10 个能直接用的整块表达，按功能分类。", minutes: 5, output: "10 个语块卡" },
+    { title: "每个语块造 2 句", desc: "用你自己的经历造句，不抄例句；造完大声读一遍。", minutes: 15, output: "20 个句子" },
+    { title: "串成 1 分钟独白", desc: "选 8 个语块，不看稿串成 1 分钟；录音。", minutes: 5, output: "1 分钟录音" },
+  ],
+  "record-review": () => [
+    { title: "录 1 分钟即兴", desc: "选一个面试/日常话题，不写稿，直接说 1 分钟。", minutes: 5, output: "1 分钟原始录音" },
+    { title: "回听只标 3 个问题", desc: "停顿、语法、用词各选一个，不要一次标 10 个。", minutes: 5, output: "3 个问题" },
+    { title: "重录同一话题", desc: "只改这 3 个问题，重录一次，对比两次。", minutes: 10, output: "重录 + 对比" },
+  ],
+  "role-play": () => [
+    { title: "选场景写角色卡", desc: "面试官/候选人，各写 3 个目标；不要写台词。", minutes: 5, output: "2 张角色卡" },
+    { title: "即兴对话 3 分钟 ×2", desc: "第一轮你当候选人，第二轮换角色。", minutes: 15, output: "2 轮对话" },
+    { title: "复盘卡点", desc: "只记 1 个听不懂或接不上的地方。", minutes: 5, output: "1 个卡点" },
+  ],
+  "active-recall": () => [
+    { title: "写 3 个核心问题", desc: "围绕今天的内容，问题要能自测，不要抄标题。", minutes: 5, output: "3 个问题" },
+    { title: "合上资料回答", desc: "用白纸或口述回答，卡住也先不看书。", minutes: 20, output: "一页回忆稿" },
+    { title: "对照补缺", desc: "只补卡点；24 小时后再测一次。", minutes: 5, output: "3 个卡点" },
+  ],
+  "half-face": () => TASK_TEMPLATES["审美/化妆"](),
+  "look-deconstruct": () => [
+    { title: "选一个妆容分区截图", desc: "把底妆、眉眼、修容、唇分开看，标出比例和位置。", minutes: 5, output: "4 张分区图" },
+    { title: "按结构复现", desc: "按底妆-眉眼-修容-唇的顺序画一遍，不追求同款产品。", minutes: 25, output: "一次完整复现" },
+    { title: "同光拍照，只改 1 个差异", desc: "和参考图对比，只选一个结构差异改。", minutes: 10, output: "对比图 + 1 个改进" },
+  ],
+  "routine-freeze": () => [
+    { title: "把流程拆成 5 步", desc: "只保留必要步骤，写清每步用时。", minutes: 5, output: "5 步流程卡" },
+    { title: "计时做一次", desc: "同一顺序做一遍，超时就记下超在哪。", minutes: 15, output: "一次计时记录" },
+    { title: "记录遗漏与超时", desc: "只记 1 个要删掉的步骤，明天继续固化。", minutes: 5, output: "1 个删减决定" },
+  ],
+  "video-review": () => [
+    { title: "录 3 分钟展示", desc: "按真实场景讲，不背稿；允许卡壳。", minutes: 5, output: "3 分钟录像" },
+    { title: "静音看 + 开声音看", desc: "静音看手势/站姿，开声音听语速/停顿。", minutes: 10, output: "2 条观察" },
+    { title: "只改 1 个问题，重录", desc: "只改最影响表达的一个动作，重录一次。", minutes: 5, output: "重录 + 对比" },
+  ],
+};
+
+function buildTasks(profile, method) {
+  const fn = TASK_TEMPLATES[profile.domain] || TASK_TEMPLATES["通用"];
+  const override = TASK_OVERRIDES[method.id];
+  const tasks = (override ? override() : fn(method)).map((t, i) => ({ ...t, id: `${method.id}-${i}`, done: false }));
+  return {
+    tasks,
+    totalMinutes: tasks.reduce((s, t) => s + t.minutes, 0),
+    success: method.metric,
+    why: method.why,
+  };
+}
+
+function buildNextDay(profile, method, decision) {
+  if (decision.action === "switch") {
+    return [
+      "先用 5 分钟复述昨天最卡的 1 个点，不打开资料。",
+      `用新方法「${decision.nextMethod?.name || "待定"}」做一次 15 分钟微练习。`,
+      "结束前录/写 1 个可检查的输出，明天对比。",
+    ];
+  }
+  return [
+    "先用 5 分钟主动回忆昨天的 3 个卡点。",
+    `用「${method.name}」练 20 分钟，换一个更难的素材/题目。`,
+    "结束前做一次 2 分钟自测，记录分数和难度。",
+  ];
+}
+
+function computeEffect({ completion, difficulty, score, mood }) {
+  const moodScore = { 1: 40, 2: 55, 3: 65, 4: 80, 5: 95 }[mood] || 65;
+  return Math.round(0.4 * completion + 0.3 * score + 0.2 * (100 - (difficulty - 1) * 20) + 0.1 * moodScore);
+}
+
+function decideOutcome({ completion, difficulty, score, effect }) {
+  if (completion < 60) {
+    return {
+      action: "adjust",
+      type: "执行阻力",
+      headline: "先别换方法，先把门槛降下来。",
+      reason: `完成率 ${completion}% 偏低，今天更像是被任务规模或环境打断了。先缩短单次时长、拆小任务，再判断方法本身。`,
+    };
+  }
+  if (difficulty >= 5 && effect < 65) {
+    return {
+      action: "switch",
+      type: "认知过载",
+      headline: "这个方法对你现在太难了，换一个更可执行的。",
+      reason: `难度 ${difficulty}/5 且效果分 ${effect}，继续硬扛只会消耗信心。换一个难度更低、反馈更快的方法。`,
+    };
+  }
+  if (effect < 58 || score < 60) {
+    return {
+      action: "switch",
+      type: "方法不匹配",
+      headline: "你执行了，但效果没有跟上，建议换法。",
+      reason: `效果分 ${effect}、自测 ${score}，说明「做了」但没有转化为可检查的结果。不是你不努力，是方法和当前瓶颈不匹配。`,
+    };
+  }
+  return {
+    action: "keep",
+    type: "方法有效",
+    headline: "今天这个方法值得保留，明天加一点难度。",
+    reason: `效果分 ${effect}，完成率 ${completion}%，说明方法能被你执行并产生结果。明天只加一个变量：素材难度或自测严格度。`,
+  };
+}
+
+const SCENARIOS = {
+  english: {
+    id: "english",
+    label: "英语口语 · 4 周面试",
+    emoji: "🗣️",
+    answers: [
+      "4 周后有一场英文面试，我想能在压力下连续说 2 分钟不卡壳。",
+      "雅思口语 5.5，能写但一开口就语法混乱；上次模拟面试被打断 3 次。",
+      "每天 30 分钟，晚上 9 点后，在宿舍，容易被人打断。",
+    ],
+    methodId: "shadowing",
+    switchId: "chunking",
+    logs: [
+      { completion: 60, difficulty: 4, score: 52, mood: 3, note: "跟读能跟上，但脱稿就卡。" },
+      { completion: 65, difficulty: 4, score: 55, mood: 3, note: "录音里停顿还是很多。" },
+      { completion: 55, difficulty: 5, score: 48, mood: 2, note: "越练越紧张，开始怀疑自己。" },
+      { completion: 85, difficulty: 3, score: 68, mood: 4, note: "换成语块后，至少能说出完整句子。" },
+      { completion: 88, difficulty: 3, score: 74, mood: 4, note: "面试常见问题能撑到 90 秒。" },
+      { completion: 92, difficulty: 4, score: 80, mood: 5, note: "今天被追问也没崩，继续。" },
+    ],
+  },
+  audit: {
+    id: "audit",
+    label: "审计学期末 · 2 周",
+    emoji: "📚",
+    answers: [
+      "2 周后审计学期末考，我想从 60 分左右冲到 80 分。",
+      "章节都看过，但合上书就说不清；上次模考 58 分，案例题丢分最多。",
+      "每天 1 小时，晚上 8 点到 9 点，图书馆，周末可多 1 小时。",
+    ],
+    methodId: "past-paper-reverse",
+    switchId: "active-recall",
+    logs: [
+      { completion: 70, difficulty: 3, score: 60, mood: 3, note: "真题做了，但错题没归类。" },
+      { completion: 75, difficulty: 3, score: 65, mood: 4, note: "开始按考点分类，清楚一点。" },
+      { completion: 60, difficulty: 4, score: 58, mood: 3, note: "案例题还是写不出依据。" },
+      { completion: 82, difficulty: 3, score: 70, mood: 4, note: "主动回忆能背出准则了。" },
+      { completion: 86, difficulty: 3, score: 76, mood: 4, note: "案例-规则对照有用。" },
+      { completion: 90, difficulty: 3, score: 82, mood: 5, note: "模考 78，继续。" },
+    ],
+  },
+  speech: {
+    id: "speech",
+    label: "课堂展示 · 7 天",
+    emoji: "🎤",
+    answers: [
+      "7 天后要做 3 分钟课堂展示，我想讲得清楚、不紧张。",
+      "内容准备得还行，但一上台语速就变快，上次展示超时 1 分钟。",
+      "每天 20 分钟，午休时间，在空教室，可以录像。",
+    ],
+    methodId: "321-impromptu",
+    switchId: "video-review",
+    logs: [
+      { completion: 65, difficulty: 3, score: 58, mood: 3, note: "结构有了，但一开口还是快。" },
+      { completion: 70, difficulty: 4, score: 62, mood: 3, note: "录像发现自己一直看天花板。" },
+      { completion: 80, difficulty: 3, score: 70, mood: 4, note: "只看一个动作后，改善明显。" },
+      { completion: 85, difficulty: 3, score: 76, mood: 4, note: "停顿开始可控。" },
+      { completion: 88, difficulty: 3, score: 80, mood: 5, note: "完整走了一遍，信心上来了。" },
+    ],
+  },
+  makeup: {
+    id: "makeup",
+    label: "通勤妆 · 14 天",
+    emoji: "💄",
+    answers: [
+      "2 周内学会一个 15 分钟通勤妆，日常上班能稳定画出来。",
+      "会涂粉底和口红，但底妆容易卡粉，眼影总是画脏，分不清是产品还是手法问题。",
+      "每天早上 20 分钟，自然光，在宿舍洗手台，只能半脸练习。",
+    ],
+    methodId: "half-face",
+    switchId: "look-deconstruct",
+    logs: [
+      { completion: 75, difficulty: 3, score: 62, mood: 4, note: "半脸对比能看出卡粉位置。" },
+      { completion: 80, difficulty: 3, score: 68, mood: 4, note: "换了上妆顺序，服帖一点。" },
+      { completion: 70, difficulty: 4, score: 60, mood: 3, note: "眼影还是脏，可能是晕染问题。" },
+      { completion: 85, difficulty: 3, score: 72, mood: 4, note: "按分区拆解后清楚多了。" },
+      { completion: 90, difficulty: 3, score: 78, mood: 5, note: "15 分钟能完成，步骤没漏。" },
+    ],
+  },
+};
+
+const MOODS = [
+  { value: 1, emoji: "😫", label: "很糟" },
+  { value: 2, emoji: "😕", label: "有点卡" },
+  { value: 3, emoji: "😐", label: "一般" },
+  { value: 4, emoji: "🙂", label: "不错" },
+  { value: 5, emoji: "🤩", label: "很顺" },
+];
+
+function methodById(methods, id) {
+  return methods.find((m) => m.id === id) || methods[0];
+}
+
+function scoreLabel(score) {
+  if (score >= 80) return "高";
+  if (score >= 60) return "中";
+  return "低";
+}
+
+window.__ENGINE__ = { DOMAINS, DOMAIN_META, detectDomain, parseMinutes, parseDays, detectLevel, buildProfile, matchMethods, buildDiagnosis, buildTasks, buildNextDay, computeEffect, decideOutcome, SCENARIOS, MOODS, methodById, scoreLabel };
+
+</script>
+<script>
+const E = window.__ENGINE__;
+/* ------------------------------------------------------------------ utils */
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const STORAGE_KEY = "methodlab.state.v3";
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const esc = (s = "") =>
+  String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const escAttr = esc;
+const uid = () => Math.random().toString(36).slice(2, 9);
+const iso = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const addDays = (d, n) => {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+};
+const dateLabel = (value) => {
+  if (!value) return "";
+  const d = new Date(String(value).slice(0, 10) + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return String(value);
+  return `${d.getMonth() + 1}月${d.getDate()}日`;
+};
+const timeLabel = (ts) =>
+  new Date(ts || Date.now()).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+const avg = (arr) => (arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0);
+const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+function formatText(text = "") {
+  return esc(text)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/`(.+?)`/g, "<code>$1</code>")
+    .replace(/\n/g, "<br>");
+}
+
+/* ------------------------------------------------------------------ state */
+let METHODS = [];
+let METHOD_MAP = new Map();
+let state = null;
+let feedbackDraft = null;
+let busy = false;
+
+function defaultState() {
+  return {
+    version: 3,
+    createdAt: new Date().toISOString(),
+    gate: { step: 0, answers: [], complete: false },
+    profile: null,
+    diagnosis: null,
+    match: [],
+    methodId: null,
+    plan: null,
+    logs: [],
+    trials: [],
+    messages: [],
+    activeView: "chat",
+    demo: null,
+    lastSummary: null,
+    llmAvailable: false,
+    llmEnabled: false,
+    llmModel: "",
+    libraryFilter: "全部",
+    librarySearch: "",
+  };
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed.version !== 3) return null;
+    return { ...defaultState(), ...parsed };
+  } catch {
+    return null;
+  }
+}
+
+function persist() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    /* local-first; ignore quota / private mode */
+  }
+}
+
+/* ------------------------------------------------------------------ gate */
+const GATE_QUESTIONS = [
+  {
+    title: "你想解决的具体学习目标是什么？",
+    hint: "请给我一个场景 + 期限，例如「4 周后英文面试，能连续说 2 分钟」。",
+    chips: ["4 周后英文面试，能连续说 2 分钟", "2 周后审计期末，想从 60 到 80", "7 天后课堂展示，想不紧张", "2 周学会 15 分钟通勤妆"],
+  },
+  {
+    title: "你现在的真实起点如何？",
+    hint: "给我一个最近的表现、分数、作品或卡点，不要只说「不太好」。",
+    chips: ["雅思 5.5，开口就语法混乱", "模考 58，案例题丢分最多", "内容还行，上台语速就变快", "会基础，但底妆总卡粉"],
+  },
+  {
+    title: "你每天能稳定投入多少时间？在什么环境？",
+    hint: "时间、地点、干扰因素都算。越真实，任务卡越能执行。",
+    chips: ["每天 30 分钟，晚上 9 点后，在宿舍", "每天 1 小时，晚上图书馆", "每天 20 分钟，午休空教室", "每天 20 分钟，早上自然光"],
+  },
+];
+
+const PAGE_META = {
+  chat: { crumb: "教练台 / 今日", title: "今天，先把方法调对。" },
+  library: { crumb: "方法资产 / 方法库", title: "方法不是收藏，是拿来试的。" },
+  memory: { crumb: "长期记忆 / 我的档案", title: "它记得你走过的弯路。" },
+  report: { crumb: "反馈闭环 / 学习报告", title: "用反馈，而不是感觉，判断效果。" },
+};
+
+function addMessage(role, type, text = "", data = null) {
+  const m = { id: uid(), role, type, text, data, ts: Date.now() };
+  state.messages.push(m);
+  return m;
+}
+
+function ensureGreeting() {
+  if (state.messages.length) return;
+  addMessage(
+    "agent",
+    "text",
+    "嗨，我是小法 👋 学法实验室的学习教练。\n\n我会先问你 **3 个问题**，再给方案。不是走流程——没有起点和约束的推荐，都是耍流氓。\n\n你可以直接点下面的例子，也可以用自己的话回答。"
+  );
+  addMessage("agent", "gate");
+}
+
+/* ------------------------------------------------------------------ init */
+async function init() {
+  try {
+    let data;
+    if (window.__METHODS__) {
+      data = window.__METHODS__;
+    } else {
+      const res = await fetch("data/methods.json", { cache: "no-store" });
+      if (!res.ok) throw new Error("methods.json not found");
+      data = await res.json();
+    }
+    METHODS = data.methods || [];
+    METHOD_MAP = new Map(METHODS.map((m) => [m.id, m]));
+    const navCount = $("#navMethods");
+    if (navCount) navCount.textContent = String(METHODS.length);
+  } catch (err) {
+    $("#chatStream").innerHTML = `<div class="empty-state"><div class="big">⚠️</div><strong>方法库没有加载成功</strong><p>请用本地服务器打开页面：<code>npm start</code>，然后访问 http://localhost:4173。</p></div>`;
+    return;
+  }
+
+  state = loadState();
+  const params = new URLSearchParams(location.search);
+  const demo = params.get("demo");
+
+  if (demo === "gate") {
+    state = defaultState();
+    ensureGreeting();
+  } else if (demo) {
+    state = buildDemoState(params.get("scenario") || "english", demo);
+  } else if (!state) {
+    state = defaultState();
+    ensureGreeting();
+  }
+
+  if (!state.messages?.length) ensureGreeting();
+  bindEvents();
+  renderAll();
+  checkHealth();
+  if (demo) persist();
+}
+
+/* ------------------------------------------------------------------ render */
+function renderAll() {
+  renderNav();
+  renderSidebar();
+  renderTopbar();
+  renderChat();
+  renderSuggestions();
+  renderContext();
+  if (state.activeView === "library") renderLibrary();
+  if (state.activeView === "memory") renderMemory();
+  if (state.activeView === "report") renderReport();
+  persist();
+}
+
+function renderNav() {
+  $$(".nav-item").forEach((btn) => btn.classList.toggle("active", btn.dataset.view === state.activeView));
+  $$(".view").forEach((view) => view.classList.toggle("active", view.id === `view-${state.activeView}`));
+  const meta = PAGE_META[state.activeView] || PAGE_META.chat;
+  $("#crumb").textContent = meta.crumb;
+  $("#pageTitle").textContent = meta.title;
+  const todayCount = state.plan ? state.plan.tasks.filter((t) => !t.done).length : 1;
+  const badge = $("#navToday");
+  if (badge) badge.textContent = String(todayCount || "✓");
+}
+
+function renderSidebar() {
+  const answered = state.gate.answers.filter(Boolean).length;
+  const pct = state.gate.complete ? 100 : (answered / 3) * 100;
+  const bar = $("#gateMiniBar");
+  if (bar) bar.style.width = `${pct}%`;
+  const txt = $("#gateMiniText");
+  if (txt) txt.textContent = state.gate.complete ? "3 / 3 · 已解锁" : `${answered} / 3`;
+
+  const name = state.profile?.name || "体验用户";
+  $("#userName").textContent = name;
+  $("#userAvatar").textContent = name.slice(0, 1);
+  $("#userSub").textContent = state.profile
+    ? `${state.profile.domain} · 第 ${state.logs.length + 1} 天`
+    : "等待第一次诊断";
+  $("#userStreak").innerHTML = `${computeStreak()}<span>d</span>`;
+}
+
+function renderTopbar() {
+  const d = new Date();
+  $("#todayLabel").textContent = `${d.getMonth() + 1}月${d.getDate()}日 · 周${"日一二三四五六"[d.getDay()]}`;
+  const pill = $("#llmPill");
+  const text = $("#llmText");
+  if (!pill || !text) return;
+  if (state.llmEnabled) {
+    pill.classList.add("on");
+    pill.classList.remove("off");
+    text.textContent = state.llmModel || "AI 增强";
+  } else {
+    pill.classList.remove("on");
+    pill.classList.add("off");
+    text.textContent = "本地教练引擎";
+  }
+}
+
+function renderChat() {
+  const stream = $("#chatStream");
+  if (!stream) return;
+  const demo = state.demo
+    ? `<div class="demo-banner"><span>✨ 演示档案：${esc(state.demo.label)} · 含模拟学习记录</span><button data-action="reset">退出演示</button></div>`
+    : "";
+  stream.innerHTML = demo + state.messages.map(renderMessage).join("");
+  const focus = new URLSearchParams(location.search).get("focus");
+  const target = focus ? stream.querySelector(`.${focus}-card`) : null;
+  if (target) {
+    setTimeout(() => target.scrollIntoView({ block: "center" }), 120);
+  } else {
+    scrollChat();
+  }
+}
+
+function renderMessage(m) {
+  const user = m.role === "user";
+  const time = timeLabel(m.ts);
+  let content = "";
+  if (m.type === "text") content = `<div class="bubble">${formatText(m.text)}</div>`;
+  else if (m.type === "gate") content = renderGateCard();
+  else if (m.type === "diagnosis") content = renderDiagnosisCard(m.data?.diagnosis);
+  else if (m.type === "method") content = renderMethodCard(m.data);
+  else if (m.type === "plan") content = renderPlanCard(m.data);
+  else if (m.type === "summary") content = renderSummaryCard(m.data);
+  else if (m.type === "switch") content = renderSwitchCard(m.data);
+  else content = `<div class="bubble">${formatText(m.text || "")}</div>`;
+
+  return `
+    <div class="message ${user ? "user" : "agent"}">
+      <div class="avatar">${user ? "你" : "法"}</div>
+      <div class="msg-wrap">
+        <div class="msg-meta"><strong>${user ? "你" : "小法 · 学习教练"}</strong><span>${time}</span></div>
+        ${content}
+      </div>
+    </div>`;
+}
+
+function renderGateCard() {
+  const answers = state.gate.answers;
+  const step = Math.min(state.gate.step, 3);
+  const complete = state.gate.complete;
+  const segs = [0, 1, 2].map((i) => {
+    const done = complete || Boolean(answers[i]);
+    const active = !complete && i === step;
+    return `<div class="gate-seg ${done ? "done" : ""} ${active ? "active" : ""}"><i></i></div>`;
+  }).join("");
+
+  const questions = GATE_QUESTIONS.map((q, i) => {
+    const done = Boolean(answers[i]);
+    const active = !complete && i === step;
+    return `
+      <div class="gate-q ${done ? "done" : ""} ${active ? "active" : ""}">
+        <div class="q-index">${done ? "✓" : i + 1}</div>
+        <div class="q-body">
+          <div class="q-title">${esc(q.title)}</div>
+          ${done ? `<div class="q-answer">${esc(answers[i])}</div>` : `<div class="q-hint">${esc(q.hint)}</div>`}
+        </div>
+      </div>`;
+  }).join("");
+
+  return `
+    <div class="gate-card">
+      <div class="gate-head">
+        <div class="left"><span class="tag coral">硬门槛</span><div><div class="gate-title">先回答 3 个问题</div><div class="gate-sub">答完之前，我不会给出最终方案</div></div></div>
+        <span class="tag ink">${complete ? "已解锁" : `${answers.filter(Boolean).length} / 3`}</span>
+      </div>
+      <div class="gate-progress">${segs}</div>
+      <div class="gate-questions">${questions}</div>
+      ${complete
+        ? `<div class="gate-unlocked">✅ 三问完成：学情判断 → 方法匹配 → 今日任务卡已解锁</div>`
+        : `<div class="gate-lock">🔒 还差 ${3 - answers.filter(Boolean).length} 问；现在给方案，等于瞎猜。</div>`}
+    </div>`;
+}
+
+function renderDiagnosisCard(d) {
+  if (!d) return `<div class="coach-card"><div class="card-body">学情数据生成中…</div></div>`;
+  return `
+    <div class="coach-card diagnosis-card">
+      <div class="card-head">
+        <div class="card-kicker"><span class="ico">01</span> 学情判断</div>
+        <span class="tag gray">不是标签，是起点</span>
+      </div>
+      <div class="card-title">${esc(d.headline)}</div>
+      <div class="card-body">
+        <div class="diagnosis-grid">
+          <div class="readiness-ring" style="--value:${d.readiness}">
+            <div class="readiness-inner"><div class="readiness-num">${d.readiness}</div><div class="readiness-label">准备度 / 100</div></div>
+          </div>
+          <div class="diag-bullets">
+            ${d.bullets.map((b) => `<div class="diag-row"><div class="k">${esc(b.label)}</div><div class="v">${esc(b.value)}</div></div>`).join("")}
+          </div>
+        </div>
+        <div class="prescription">${esc(d.prescription)}</div>
+      </div>
+      <div class="card-foot"><span class="muted">下一步：只选一个方法，先试 3 天。</span><span class="tag mint">可验证 · 可退出</span></div>
+    </div>`;
+}
+
+function renderMethodCard(data) {
+  if (!data?.method) return "";
+  const m = data.method;
+  const alts = (data.alternatives || []).filter((x) => x.id !== m.id).slice(0, 2);
+  const reasons = (m.reasons || []).slice(0, 3);
+  const dots = "●".repeat(m.difficulty) + "○".repeat(Math.max(0, 5 - m.difficulty));
+  return `
+    <div class="coach-card method-card">
+      <div class="card-head">
+        <div class="card-kicker"><span class="ico">02</span> 方法匹配</div>
+        <span class="tag mint">3 天微试验</span>
+      </div>
+      <div class="card-body">
+        <div class="method-top">
+          <div><div class="method-name">${esc(m.name)}</div><div class="method-en">${esc(m.en)}</div></div>
+          <div class="fit-pill"><div class="fit-num">${m.fit || "—"}</div><div class="fit-label">匹配度 / 100</div></div>
+        </div>
+        <div class="method-meta">
+          <span class="tag mint"><span class="evidence-badge">${m.evidence}</span> 证据 ${m.evidence}</span>
+          <span class="tag gray">${esc(m.category)}</span>
+          <span class="tag gray">约 ${m.time} 分钟</span>
+          <span class="tag gray">难度 ${dots}</span>
+        </div>
+        <p class="method-quote">${esc(m.one_liner)}</p>
+        <div class="method-why">
+          <div class="why-row"><span>为什么是它</span><span>${esc(m.why)}</span></div>
+          <div class="why-row"><span>3 天后怎么判断</span><span>${esc(m.metric)}</span></div>
+        </div>
+        ${reasons.length ? `<div class="reason-list">${reasons.map((r) => `<span class="reason-pill">${esc(r)}</span>`).join("")}</div>` : ""}
+        <div class="plan-metric"><strong>什么时候该换：</strong>${esc(m.switch_when)}</div>
+        ${alts.length ? `
+          <div class="detail-section" style="margin-top:14px">
+            <h4>备选方案（不是备胎，是对照组）</h4>
+            <div class="reason-list">
+              ${alts.map((a) => `<button class="chip" data-action="open-method" data-id="${escAttr(a.id)}">${esc(a.name)} · ${a.fit || "—"} 分</button>`).join("")}
+            </div>
+          </div>` : ""}
+      </div>
+      <div class="card-foot"><span class="muted">方法来自方法库，不是现场编的。</span><span class="tag gold">证据 ${m.evidence}</span></div>
+    </div>`;
+}
+
+function renderPlanCard(data) {
+  if (!data?.plan) return "";
+  const plan = data.plan;
+  const method = data.method;
+  const day = data.day || 1;
+  const done = plan.tasks.filter((t) => t.done).length;
+  const allDone = done === plan.tasks.length;
+  return `
+    <div class="coach-card plan-card">
+      <div class="card-head">
+        <div class="card-kicker"><span class="ico">03</span> 今日任务卡</div>
+        <span class="tag gold">第 ${day} 天</span>
+      </div>
+      <div class="card-body">
+        <div class="plan-top">
+          <div><div class="plan-title">今天只做这 ${plan.tasks.length} 件事</div><div class="plan-sub">${esc(method.name)} · ${esc(method.category)}</div></div>
+          <div class="plan-time">${plan.totalMinutes}<span>min</span></div>
+        </div>
+        <div class="task-list">
+          ${plan.tasks.map((t) => `
+            <div class="task ${t.done ? "done" : ""}">
+              <button class="task-check" data-action="toggle-task" data-task="${escAttr(t.id)}" aria-label="标记完成">✓</button>
+              <div class="task-body">
+                <div class="task-title">${esc(t.title)}</div>
+                <div class="task-desc">${esc(t.desc)}</div>
+                <div class="task-meta"><span>产出：<span class="out">${esc(t.output)}</span></span><span>·</span><span>可检查</span></div>
+              </div>
+              <div class="task-min">${t.minutes}′</div>
+            </div>`).join("")}
+        </div>
+        <div class="plan-metric"><strong>完成标准：</strong>${esc(plan.success)}<br><strong>今天只改一个变量：</strong>先按卡执行，不临时加码。</div>
+      </div>
+      <div class="card-foot">
+        <span class="muted">已完成 ${done}/${plan.tasks.length} · 完成后请反馈</span>
+        <button class="btn ${allDone ? "coral" : "primary"}" data-action="open-feedback">${allDone ? "全部完成，去打卡 ✅" : "完成打卡，反馈今天"}</button>
+      </div>
+    </div>`;
+}
+
+function renderSummaryCard(data) {
+  if (!data?.log) return "";
+  const { log, decision, method, nextDay, nextMethod } = data;
+  const color = log.effect >= 70 ? "#2b8a5b" : log.effect >= 55 ? "#c6922e" : "#ff6b4a";
+  const cls = log.effect >= 70 ? "" : log.effect >= 55 ? "warn" : "bad";
+  return `
+    <div class="coach-card summary-card ${cls}">
+      <div class="card-head">
+        <div class="card-kicker"><span class="ico">04</span> 今日总结</div>
+        <span class="tag ${decision.action === "keep" ? "mint" : decision.action === "switch" ? "coral" : "gold"}">${esc(decision.type)}</span>
+      </div>
+      <div class="card-body">
+        <div class="summary-grid">
+          <div class="effect-ring" style="background:conic-gradient(${color} calc(${log.effect} * 1%), #eee8dc 0)">
+            <div class="effect-inner"><div class="effect-num">${log.effect}</div><div class="effect-label">今日效果分</div></div>
+          </div>
+          <div>
+            <div class="summary-headline">${esc(decision.headline)}</div>
+            <div class="summary-reason">${esc(decision.reason)}</div>
+            <div class="summary-stats">
+              <span class="stat-pill">完成率 <b>${log.completion}%</b></span>
+              <span class="stat-pill">难度 <b>${log.difficulty}/5</b></span>
+              <span class="stat-pill">自测 <b>${log.score}</b></span>
+              <span class="stat-pill">投入 <b>${log.minutes || method.time} 分钟</b></span>
+            </div>
+          </div>
+        </div>
+        ${log.note ? `<div class="memory-note">📝 你的原话：${esc(log.note)}</div>` : ""}
+        <div class="next-day">
+          <div class="next-day-title">🌤 明天学什么（已排好）</div>
+          <ol>${(nextDay || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
+        </div>
+      </div>
+      <div class="card-foot">
+        <span class="muted">${nextMethod ? "已触发换法，下面看新任务卡。" : "保持方法，明天只加一个变量。"}</span>
+        <button class="btn ghost" data-action="view" data-view="report">看趋势 →</button>
+      </div>
+    </div>`;
+}
+
+function renderSwitchCard(data) {
+  if (!data?.from || !data?.to) return "";
+  return `
+    <div class="coach-card switch-card">
+      <div class="card-head">
+        <div class="card-kicker"><span class="ico">↺</span> 换法建议</div>
+        <span class="tag coral">不是失败，是调试</span>
+      </div>
+      <div class="card-body">
+        <div class="switch-path">
+          <span class="switch-old">${esc(data.from.name)}</span>
+          <span class="switch-arrow">→</span>
+          <span class="switch-new">${esc(data.to.name)}</span>
+        </div>
+        <div class="switch-reason">${esc(data.decision?.reason || "你主动选择了新的方法。先试 3 天，用反馈决定去留。")}</div>
+        <div class="plan-metric"><strong>新方法的判断标准：</strong>${esc(data.to.metric)}</div>
+      </div>
+      <div class="card-foot"><span class="muted">旧方法不是没用，只是不适合现在的你。</span><span class="tag gray">${esc(data.to.category)}</span></div>
+    </div>`;
+}
+
+/* ------------------------------------------------------------------ context */
+function renderContext() {
+  const panel = $("#contextPanel");
+  if (!panel) return;
+  const answered = state.gate.answers.filter(Boolean).length;
+  const pct = state.gate.complete ? 100 : (answered / 3) * 100;
+  const tasks = state.plan?.tasks || [];
+  const done = tasks.filter((t) => t.done).length;
+  const lastLog = state.logs[state.logs.length - 1];
+  const method = state.methodId ? METHOD_MAP.get(state.methodId) : null;
+
+  panel.innerHTML = `
+    ${state.demo ? `<div class="demo-banner"><span>✨ ${esc(state.demo.label)}</span><button data-action="reset">退出</button></div>` : ""}
+    <div class="ctx-card">
+      <div class="ctx-head"><div class="ctx-title">三问门槛</div><div class="ctx-dots">${[0, 1, 2].map((i) => `<i class="${state.gate.complete || state.gate.answers[i] ? "done" : i === state.gate.step ? "on" : ""}"></i>`).join("")}</div></div>
+      <div class="ctx-gate-line"><span>${state.gate.complete ? "已解锁方案" : `还差 ${3 - answered} 问`}</span><span>${answered}/3</span></div>
+      <div class="ctx-gate-sub">${state.gate.complete ? "三问已进入记忆，后续不再重复问。" : "未答完前，只澄清问题，不给最终方案。"}</div>
+      <div class="ctx-progress"><span style="width:${pct}%"></span></div>
+    </div>
+    <div class="ctx-card">
+      <div class="ctx-head"><div class="ctx-title">今天</div><span class="tag ${state.plan ? "mint" : "gray"}">${state.plan ? `第 ${state.logs.length + 1} 天` : "未开始"}</span></div>
+      ${state.plan ? `
+        <div class="ctx-method">${esc(method?.name || "今日方法")}</div>
+        <div class="ctx-method-sub">${done}/${tasks.length} 个任务 · 约 ${state.plan.totalMinutes} 分钟</div>
+        <div class="ctx-task-progress"><div class="bar"><span style="width:${tasks.length ? (done / tasks.length) * 100 : 0}%"></span></div><div class="num">${done}/${tasks.length}</div></div>
+        <button class="ctx-btn" data-action="open-feedback">完成打卡 →</button>
+      ` : `
+        <div class="ctx-gate-sub">完成三问后，这里会出现一张今天能执行、晚上能验收的任务卡。</div>
+        <button class="ctx-btn" data-action="focus-input">去回答第 ${Math.min(answered + 1, 3)} 问 →</button>
+      `}
+    </div>
+    <div class="ctx-card">
+      <div class="ctx-head"><div class="ctx-title">它记得你</div><span class="tag gray">${state.logs.length} 次反馈</span></div>
+      <div class="ctx-memory-line">${lastLog ? `最近一次：${lastLog.effect} 分` : "还没有学习记忆"}</div>
+      <div class="ctx-memory-sub">${lastLog ? `第 ${lastLog.day} 天 · ${esc(lastLog.methodName)}<br>${esc(lastLog.note || "已记录完成率、难度、自测和状态。")}` : "完成第一次打卡后，它会开始记录什么有效、什么无效。"}</div>
+      <button class="ctx-link" data-action="view" data-view="memory">查看记忆时间线 →</button>
+    </div>
+    <div class="ctx-card ctx-principles">
+      <div class="ctx-title">教练原则</div>
+      <ul>
+        <li><span>01</span> 不替你做决定，只帮你看清代价。</li>
+        <li><span>02</span> 每次只改一个变量。</li>
+        <li><span>03</span> 效果不好就换法，不硬扛。</li>
+      </ul>
+    </div>`;
+}
+
+function renderSuggestions() {
+  const box = $("#suggestions");
+  if (!box) return;
+  let chips = [];
+  if (!state.gate.complete) {
+    const q = GATE_QUESTIONS[state.gate.step] || GATE_QUESTIONS[0];
+    chips = q.chips;
+  } else if (!state.plan) {
+    chips = ["帮我生成方案", "先看方法库", "我有点急，能快点吗"];
+  } else {
+    chips = ["今天任务是什么？", "我想换方法", "复盘今天", "看看我的记忆"];
+    if (state.logs.length === 0) chips.unshift("我完成了，怎么反馈？");
+  }
+  box.innerHTML = chips.map((c) => `<button class="chip" data-action="chip" data-text="${escAttr(c)}">${esc(c)}</button>`).join("");
+  const input = $("#messageInput");
+  if (input) {
+    input.placeholder = state.gate.complete
+      ? "和教练继续聊，或点上面的快捷问题…"
+      : `回答第 ${state.gate.step + 1} 问：${GATE_QUESTIONS[state.gate.step]?.title || ""}`;
+  }
+}
+
+function scrollChat() {
+  const el = $("#chatStream");
+  if (!el) return;
+  requestAnimationFrame(() => {
+    el.scrollTop = el.scrollHeight;
+    setTimeout(() => {
+      el.scrollTop = el.scrollHeight;
+    }, 80);
+  });
+}
+
+function showTyping() {
+  const stream = $("#chatStream");
+  if (!stream || $("#typingIndicator")) return;
+  const div = document.createElement("div");
+  div.id = "typingIndicator";
+  div.className = "message";
+  div.innerHTML = `<div class="avatar">法</div><div class="msg-wrap"><div class="msg-meta"><strong>小法 · 学习教练</strong><span>正在想</span></div><div class="bubble"><span class="typing"><i></i><i></i><i></i></span></div></div>`;
+  stream.appendChild(div);
+  scrollChat();
+}
+
+function hideTyping() {
+  const el = $("#typingIndicator");
+  if (el) el.remove();
+}
+
+/* ------------------------------------------------------------------ gate flow */
+function looksLikePlanRequest(text) {
+  const t = text.trim();
+  return (
+    /^(直接|快点|别问|跳过|不要问)/.test(t) ||
+    /(别问|跳过).*(问题|三问)/.test(t) ||
+    /(直接|马上).*(给|出|生成).*(方案|计划|方法)/.test(t)
+  );
+}
+
+function handleGate(text) {
+  const t = text.trim();
+  if (t.length < 3) {
+    addMessage("agent", "text", "再具体一点。你可以只给我一个场景 + 一个最近的表现，我就能开始判断。");
+    renderAll();
+    return;
+  }
+  if (looksLikePlanRequest(t)) {
+    const q = GATE_QUESTIONS[state.gate.step];
+    addMessage("agent", "text", `我理解你着急。但还差第 ${state.gate.step + 1} 问：**${q.title}**\n\n这不是拖延——没有这个信息，方案只能靠猜。你先回答这一问，我马上继续。`);
+    renderAll();
+    return;
+  }
+
+  state.gate.answers[state.gate.step] = t;
+  state.gate.step += 1;
+
+  if (state.gate.step < 3) {
+    const next = GATE_QUESTIONS[state.gate.step];
+    addMessage("agent", "text", `收到 ✅ 第 ${state.gate.step + 1} 问：**${next.title}**\n\n${next.hint}`);
+    renderAll();
+    return;
+  }
+
+  state.gate.complete = true;
+  addMessage("agent", "text", "三问完成 ✅ 现在我做三件事：判断学情 → 匹配方法 → 生成今天能执行的任务卡。\n\n先说明：**方案不是终局，是一个 3 天微试验。**");
+  renderAll();
+  busy = true;
+  showTyping();
+  setTimeout(() => {
+    generatePlan();
+    hideTyping();
+    busy = false;
+    renderAll();
+  }, 750);
+}
+
+function generatePlan() {
+  if (!state.gate.complete) return;
+  const profile = E.buildProfile(state.gate.answers);
+  const candidates = E.matchMethods(METHODS, profile);
+  const method = candidates[0];
+  if (!method) return;
+  state.profile = profile;
+  state.match = candidates;
+  state.methodId = method.id;
+  state.diagnosis = E.buildDiagnosis(profile, method);
+  state.plan = E.buildTasks(profile, method);
+  state.lastSummary = null;
+  state.trials = [];
+  state.logs = [];
+  startTrial(method);
+
+  addMessage("agent", "diagnosis", "", { diagnosis: state.diagnosis });
+  addMessage("agent", "method", "", { method, alternatives: candidates.slice(0, 3) });
+  addMessage("agent", "plan", "", { plan: state.plan, method, profile, day: 1 });
+  addMessage(
+    "agent",
+    "text",
+    "任务卡已经生成。做完之后，点 **「完成打卡，反馈今天」**，告诉我四件事：完成度、难度、自测分、今天最卡的地方。\n\n我会根据你的反馈做今日总结；如果方法不适合，我会**直接给你换法**，并把明天学什么排好。"
+  );
+  persist();
+}
+
+/* ------------------------------------------------------------------ coach flow */
+async function sendMessage(text) {
+  const t = String(text || "").trim();
+  if (!t || busy) return;
+  const input = $("#messageInput");
+  if (input) {
+    input.value = "";
+    autoResize(input);
+  }
+  addMessage("user", "text", t);
+  renderChat();
+  renderSuggestions();
+  persist();
+
+  if (!state.gate.complete) {
+    handleGate(t);
+    return;
+  }
+
+  if (!state.plan) {
+    busy = true;
+    showTyping();
+    await sleep(450);
+    generatePlan();
+    hideTyping();
+    busy = false;
+    renderAll();
+    return;
+  }
+
+  busy = true;
+  showTyping();
+  await sleep(350);
+  try {
+    await handleCoach(t);
+  } finally {
+    hideTyping();
+    busy = false;
+    renderAll();
+  }
+}
+
+async function handleCoach(text) {
+  const t = text.trim();
+
+  if (/换.*方法|换个方法|不适合|没用|效果不好|想换/.test(t)) {
+    manualSwitch("你主动提出换法。先不否定旧方法，我们只控制一个变量：换一个更匹配当前瓶颈的方法。");
+    return;
+  }
+
+  if (/复盘|总结|今天怎么样|效果如何/.test(t)) {
+    showLastSummary();
+    return;
+  }
+
+  if (/今天.*(任务|学什么)|任务卡|计划|做什么/.test(t)) {
+    addMessage("agent", "text", "今天还是这张卡。先把第 2 步做完，再来反馈；不要临时加码。");
+    addMessage("agent", "plan", "", { plan: state.plan, method: METHOD_MAP.get(state.methodId), profile: state.profile, day: state.logs.length + 1 });
+    return;
+  }
+
+  if (/记忆|档案|了解我|记得我/.test(t)) {
+    addMessage("agent", "text", "我记得的不是聊天记录，而是能影响下一次决策的变量：你的目标、起点、时间约束、每次打卡的完成率/难度/自测，以及哪种方法对你有效。");
+    setView("memory");
+    return;
+  }
+
+  if (/方法库|有哪些方法|方法卡|换个领域/.test(t)) {
+    addMessage("agent", "text", "方法库在左边。你可以按领域筛，也可以直接告诉我目标，我帮你缩小到 3 个候选。");
+    setView("library");
+    return;
+  }
+
+  if (/你好|在吗|hi|hello|嗨/.test(t)) {
+    addMessage("agent", "text", `我在 🙌 今天是第 ${state.logs.length + 1} 天。你现在最该做的，是完成「${METHOD_MAP.get(state.methodId)?.name || "今日方法"}」的任务卡；卡住了就告诉我卡在哪一步。`);
+    return;
+  }
+
+  if (/不想|没时间|太难|焦虑|崩溃|坚持不了|累/.test(t)) {
+    addMessage("agent", "text", "先不解决「坚持」，先解决「启动」。把今天任务卡缩成最小版本：只做第 1 步，5 分钟，做完就停。\n\n你不是懒，你可能是任务设计得太大。明天我会把难度再降一档。");
+    return;
+  }
+
+  if (/怎么|如何|具体|步骤/.test(t)) {
+    const m = METHOD_MAP.get(state.methodId);
+    if (m) {
+      addMessage("agent", "text", `今天这个方法叫「${m.name}」。具体只做三步：\n\n1. ${m.steps[0]}\n2. ${m.steps[1]}\n3. ${m.steps[2]}\n\n不要一次做完整套；先做出一个可检查的产出。`);
+      return;
+    }
+  }
+
+  if (state.llmEnabled) {
+    try {
+      const reply = await askLLM(t);
+      if (reply) {
+        addMessage("agent", "text", reply);
+        return;
+      }
+    } catch {
+      /* fall through to local */
+    }
+  }
+
+  const m = METHOD_MAP.get(state.methodId);
+  addMessage(
+    "agent",
+    "text",
+    `我在听。先把这句话放进今天的判断里：**${t}**\n\n现在不需要更多建议，只需要一个动作——回到「${m?.name || "今日方法"}」的任务卡，完成最小的一步。完成后打卡，我会用你的反馈决定明天是加难度、降难度，还是换法。`
+  );
+}
+
+async function askLLM(message) {
+  const res = await fetch("/api/coach", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message,
+      context: {
+        profile: state.profile,
+        method: METHOD_MAP.get(state.methodId)?.name,
+        plan: state.plan?.tasks?.map((t) => ({ title: t.title, done: t.done })),
+        recentLogs: state.logs.slice(-5),
+      },
+    }),
+  });
+  if (!res.ok) throw new Error("LLM unavailable");
+  const data = await res.json();
+  return data.text;
+}
+
+/* ------------------------------------------------------------------ tasks / feedback */
+function toggleTask(taskId) {
+  if (!state.plan) return;
+  const task = state.plan.tasks.find((t) => t.id === taskId);
+  if (!task) return;
+  task.done = !task.done;
+  persist();
+  renderAll();
+  scrollChat();
+}
+
+function openFeedback() {
+  if (!state.plan) {
+    toast("先完成三问，拿到今天的任务卡。");
+    return;
+  }
+  const total = state.plan.tasks.length;
+  const done = state.plan.tasks.filter((t) => t.done).length;
+  feedbackDraft = {
+    completion: done ? Math.round((done / total) * 100) : 80,
+    difficulty: 3,
+    score: 70,
+    mood: 4,
+    note: "",
+  };
+  renderFeedbackModal();
+}
+
+function renderFeedbackModal() {
+  const method = METHOD_MAP.get(state.methodId);
+  const d = feedbackDraft;
+  const modal = `
+    <div class="modal-backdrop">
+      <div class="modal narrow" role="dialog" aria-modal="true" aria-label="今日反馈">
+        <form id="feedbackForm">
+          <div class="modal-head">
+            <div><h3>今日反馈 · 让明天更准</h3><p>${esc(method?.name || "今日方法")} · 你不需要写得漂亮，只要真实。</p></div>
+            <button type="button" class="modal-close" data-action="close-modal" aria-label="关闭">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="feedback-grid">
+              <div class="feedback-block">
+                <div class="feedback-label"><span>完成度</span><small>不是「做了多久」，是「完成了多少」</small></div>
+                <div class="range-row"><input id="fbCompletion" type="range" min="0" max="100" step="5" value="${d.completion}" data-range="completion" /><span class="range-value" data-range-value="completion">${d.completion}%</span></div>
+              </div>
+              <div class="feedback-block">
+                <div class="feedback-label"><span>今天的难度</span><small>1 = 太轻松，5 = 快撑不住</small></div>
+                <div class="difficulty-row">
+                  ${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="diff-btn ${d.difficulty === n ? "active" : ""}" data-action="diff" data-diff="${n}">${n}</button>`).join("")}
+                </div>
+              </div>
+              <div class="feedback-block">
+                <div class="feedback-label"><span>自测 / 产出质量</span><small>如果没有分数，就按 0-100 估一个</small></div>
+                <div class="range-row"><input id="fbScore" type="range" min="0" max="100" step="5" value="${d.score}" data-range="score" /><span class="range-value" data-range-value="score">${d.score}</span></div>
+              </div>
+              <div class="feedback-block">
+                <div class="feedback-label"><span>今天的状态</span><small>状态会影响判断，不是借口</small></div>
+                <div class="mood-row">
+                  ${E.MOODS.map((m) => `<button type="button" class="mood-btn ${d.mood === m.value ? "active" : ""}" data-action="mood" data-mood="${m.value}">${m.emoji}<small>${m.label}</small></button>`).join("")}
+                </div>
+              </div>
+              <div class="feedback-block">
+                <div class="feedback-label"><span>今天最卡的地方</span><small>越具体，越容易被换法</small></div>
+                <textarea id="fbNote" class="feedback-note" placeholder="例如：跟读能跟上，但一脱稿就卡；或者：案例题知道规则，但写不出依据。">${esc(d.note)}</textarea>
+              </div>
+              <div class="feedback-tip">🔍 我会用这四个信号判断：完成率 <b>&lt;60%</b> → 先降门槛；效果分 <b>&lt;58</b> 或自测 <b>&lt;60</b> → 换方法；难度 <b>=5</b> 且效果低 → 认知过载，换更轻的方法。</div>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button type="button" class="btn ghost" data-action="close-modal">稍后再说</button>
+            <button type="submit" class="btn coral">提交反馈，生成总结 →</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+  showModal(modal);
+}
+
+function readFeedbackForm() {
+  return {
+    completion: clamp(parseInt($("#fbCompletion")?.value || "80", 10), 0, 100),
+    difficulty: clamp(parseInt(feedbackDraft?.difficulty || 3, 10), 1, 5),
+    score: clamp(parseInt($("#fbScore")?.value || "70", 10), 0, 100),
+    mood: clamp(parseInt(feedbackDraft?.mood || 4, 10), 1, 5),
+    note: ($("#fbNote")?.value || "").trim(),
+  };
+}
+
+function submitFeedback() {
+  if (!state.plan) return;
+  const fb = readFeedbackForm();
+  completeDay(fb);
+}
+
+function completeDay(fb) {
+  const method = METHOD_MAP.get(state.methodId);
+  if (!method) return;
+  const effect = E.computeEffect(fb);
+  const decision = E.decideOutcome({ ...fb, effect });
+  const log = {
+    id: uid(),
+    date: iso(),
+    day: state.logs.length + 1,
+    ...fb,
+    effect,
+    methodId: method.id,
+    methodName: method.name,
+    minutes: state.plan?.totalMinutes || method.time,
+  };
+  state.logs.push(log);
+
+  updateTrial(log, decision);
+  let nextMethod = null;
+  if (decision.action === "switch") {
+    nextMethod = METHOD_MAP.get(method.switch_to) || (state.match || []).find((m) => m.id !== method.id) || null;
+    if (nextMethod?.id === method.id) nextMethod = null;
+    decision.nextMethod = nextMethod;
+  }
+
+  const nextDay = E.buildNextDay(state.profile, method, decision);
+  const summary = { log, decision, method, nextDay, nextMethod };
+  state.lastSummary = summary;
+  addMessage("agent", "summary", "", summary);
+
+  if (nextMethod) {
+    addMessage("agent", "switch", "", { from: method, to: nextMethod, decision });
+    state.profile.failedMethods = Array.from(new Set([...(state.profile.failedMethods || []), method.id]));
+    state.methodId = nextMethod.id;
+    state.match = E.matchMethods(METHODS, state.profile);
+    state.diagnosis = E.buildDiagnosis(state.profile, nextMethod);
+    state.plan = E.buildTasks(state.profile, nextMethod);
+    startTrial(nextMethod);
+    addMessage("agent", "plan", "", { plan: state.plan, method: nextMethod, profile: state.profile, day: state.logs.length + 1 });
+    addMessage("agent", "text", `换法不是判你失败，是把变量控制住。明天先用「${nextMethod.name}」做一次最小练习；如果 3 天后效果仍低，我们会继续换，直到找到能让你产出结果的版本。`);
+  } else if (decision.action === "adjust") {
+    addMessage("agent", "text", "今天先不换法。明天把任务缩到最小版本：只做前两步，10-15 分钟，先恢复完成感。完成率上来后，再判断方法本身。");
+  } else {
+    addMessage("agent", "text", "今天这个方法值得保留。明天只加一个变量：素材/题目难一点，或自测严一点；不要同时加时长和难度。");
+  }
+
+  closeModal();
+  persist();
+  renderAll();
+  toast(decision.action === "switch" ? "已记录反馈，并为你换了方法。" : "已记录反馈，明天计划已更新。");
+  setTimeout(scrollChat, 80);
+}
+
+function startTrial(method) {
+  if (!method) return null;
+  const existing = state.trials.find((t) => t.methodId === method.id && t.status === "active");
+  if (existing) return existing;
+  const trial = {
+    id: uid(),
+    methodId: method.id,
+    methodName: method.name,
+    startDate: iso(),
+    endDate: null,
+    status: "active",
+    logIds: [],
+    avgCompletion: null,
+    avgEffect: null,
+  };
+  state.trials.push(trial);
+  return trial;
+}
+
+function updateTrial(log, decision) {
+  let trial = state.trials.find((t) => t.methodId === log.methodId && t.status === "active");
+  if (!trial) trial = startTrial(METHOD_MAP.get(log.methodId));
+  if (!trial) return null;
+  trial.logIds.push(log.id);
+  const logs = state.logs.filter((l) => trial.logIds.includes(l.id));
+  trial.avgCompletion = avg(logs.map((l) => l.completion));
+  trial.avgEffect = avg(logs.map((l) => l.effect));
+  if (decision.action === "switch") {
+    trial.status = "switched";
+    trial.endDate = log.date;
+    trial.reason = decision.reason;
+  }
+  return trial;
+}
+
+function manualSwitch(reason) {
+  const old = METHOD_MAP.get(state.methodId);
+  if (!old) return;
+  const next = METHOD_MAP.get(old.switch_to) || (state.match || []).find((m) => m.id !== old.id);
+  if (!next) {
+    toast("方法库里暂时没有更合适的替代，先保持当前方法。");
+    return;
+  }
+  const trial = state.trials.find((t) => t.methodId === old.id && t.status === "active");
+  if (trial) {
+    trial.status = "switched";
+    trial.endDate = iso();
+    trial.reason = reason;
+  }
+  state.profile.failedMethods = Array.from(new Set([...(state.profile.failedMethods || []), old.id]));
+  state.methodId = next.id;
+  state.plan = E.buildTasks(state.profile, next);
+  state.match = E.matchMethods(METHODS, state.profile);
+  state.diagnosis = E.buildDiagnosis(state.profile, next);
+  startTrial(next);
+  addMessage("agent", "text", reason);
+  addMessage("agent", "switch", "", { from: old, to: next, decision: { reason } });
+  addMessage("agent", "plan", "", { plan: state.plan, method: next, profile: state.profile, day: state.logs.length + 1 });
+  persist();
+  renderAll();
+  toast(`已换到「${next.name}」，任务卡已更新。`);
+}
+
+function showLastSummary() {
+  if (!state.logs.length) {
+    addMessage("agent", "text", "还没有可复盘的反馈。先完成今天的任务，点「完成打卡」，我才能用数据总结，而不是用感觉。");
+    renderAll();
+    return;
+  }
+  if (state.lastSummary) {
+    addMessage("agent", "summary", "", state.lastSummary);
+    renderAll();
+    return;
+  }
+  const log = state.logs[state.logs.length - 1];
+  const method = METHOD_MAP.get(log.methodId) || METHOD_MAP.get(state.methodId);
+  const decision = E.decideOutcome(log);
+  const nextMethod = decision.action === "switch" ? METHOD_MAP.get(method?.switch_to) : null;
+  const data = { log, decision, method, nextDay: E.buildNextDay(state.profile, method, { ...decision, nextMethod }), nextMethod };
+  state.lastSummary = data;
+  addMessage("agent", "summary", "", data);
+  renderAll();
+}
+
+/* ------------------------------------------------------------------ library */
+function renderLibrary() {
+  const filters = ["全部", ...E.DOMAINS];
+  const counts = Object.fromEntries(E.DOMAINS.map((d) => [d, METHODS.filter((m) => m.domains.includes(d)).length]));
+  counts["全部"] = METHODS.length;
+  $("#domainFilters").innerHTML = filters
+    .map((d) => `<button class="filter-chip ${state.libraryFilter === d ? "active" : ""}" data-action="filter-domain" data-domain="${escAttr(d)}">${esc(d)} <span style="opacity:.55">${counts[d] || 0}</span></button>`)
+    .join("");
+  const search = $("#librarySearch");
+  if (search) search.value = state.librarySearch || "";
+  renderMethodGrid();
+}
+
+function renderMethodGrid() {
+  const grid = $("#methodGrid");
+  if (!grid) return;
+  const q = (state.librarySearch || "").toLowerCase().trim();
+  const list = METHODS.filter((m) => {
+    const domainOk = state.libraryFilter === "全部" || m.domains.includes(state.libraryFilter);
+    const text = `${m.name} ${m.en} ${m.category} ${m.domains.join(" ")} ${m.one_liner} ${m.goal || ""}`.toLowerCase();
+    return domainOk && (!q || text.includes(q));
+  });
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="big">🔍</div><strong>没有找到匹配的方法</strong><p>换个关键词，或切回「全部」。</p></div>`;
+    return;
+  }
+  grid.innerHTML = list
+    .map((m) => {
+      const meta = E.DOMAIN_META[m.domains[0]] || E.DOMAIN_META["通用"];
+      return `<button class="method-tile" data-action="open-method" data-id="${escAttr(m.id)}">
+        <div class="method-tile-top"><div><div class="method-tile-name">${esc(m.name)}</div><div class="method-tile-en">${esc(m.en)}</div></div><span class="evidence">${m.evidence}</span></div>
+        <p>${esc(m.one_liner)}</p>
+        <div class="method-tile-foot"><span class="domain-dot"><i style="background:${meta.color}"></i>${esc(m.domains.slice(0, 2).join(" / "))}</span><span class="method-tile-time">${m.time} min · 难度 ${m.difficulty}/5</span></div>
+      </button>`;
+    })
+    .join("");
+}
+
+function openMethod(id) {
+  const m = METHOD_MAP.get(id);
+  if (!m) return;
+  let fit = null;
+  if (state.profile) {
+    fit = E.matchMethods(METHODS, state.profile).find((x) => x.id === id);
+  }
+  const meta = E.DOMAIN_META[m.domains[0]] || E.DOMAIN_META["通用"];
+  const modal = `
+    <div class="modal-backdrop">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="${escAttr(m.name)}">
+        <div class="modal-head">
+          <div>
+            <div class="method-detail-top"><div><div class="method-detail-name">${esc(m.name)}</div><div class="method-detail-en">${esc(m.en)}</div></div><span class="tag mint"><span class="evidence-badge">${m.evidence}</span> 证据 ${m.evidence}</span></div>
+            <p>${esc(m.one_liner)}</p>
+          </div>
+          <button class="modal-close" data-action="close-modal" aria-label="关闭">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="method-meta">
+            <span class="tag gray">${esc(meta.emoji)} ${esc(m.domains.join(" / "))}</span>
+            <span class="tag gray">${esc(m.category)}</span>
+            <span class="tag gray">约 ${m.time} 分钟</span>
+            <span class="tag gray">难度 ${m.difficulty}/5</span>
+            ${fit ? `<span class="tag mint">当前匹配 ${fit.fit} 分</span>` : ""}
+          </div>
+          <div class="detail-section"><h4>为什么有效</h4><p>${esc(m.why)}</p></div>
+          <div class="detail-section"><h4>执行步骤</h4><ol>${m.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol></div>
+          <div class="detail-two">
+            <div class="detail-box"><div class="t">成功指标</div><div class="c">${esc(m.metric)}</div></div>
+            <div class="detail-box"><div class="t">时间 / 难度</div><div class="c">约 ${m.time} 分钟 · 难度 ${m.difficulty}/5<br>证据：${m.evidence}（${esc(m.evidence_note)}）</div></div>
+          </div>
+          <div class="detail-section"><h4>配套资料（三件套）</h4><ul>${m.materials.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>
+          <div class="detail-two">
+            <div class="detail-box"><div class="t">常见失败</div><div class="c">${m.fail.map(esc).join("；")}</div></div>
+            <div class="detail-box"><div class="t">什么时候换</div><div class="c">${esc(m.switch_when)}</div></div>
+          </div>
+          <div class="source-note">来源：${esc(m.source)}。方法卡只提炼可执行结构，不复制个人表达；证据等级 C 的方法请在 3 天微试验中谨慎验证。</div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn ghost" data-action="close-modal">先看看</button>
+          <button class="btn primary" data-action="try-method" data-id="${escAttr(m.id)}">用这个方法试 3 天 →</button>
+        </div>
+      </div>
+    </div>`;
+  showModal(modal);
+}
+
+function tryMethod(id) {
+  if (!state.gate.complete) {
+    closeModal();
+    toast("先完成三问。方法可以选，但不能跳过起点。");
+    return;
+  }
+  const next = METHOD_MAP.get(id);
+  const old = METHOD_MAP.get(state.methodId);
+  if (!next) return;
+  if (next.id === old?.id) {
+    closeModal();
+    toast("这就是你当前的方法，先按任务卡做完今天。");
+    return;
+  }
+  const trial = state.trials.find((t) => t.methodId === old?.id && t.status === "active");
+  if (trial) {
+    trial.status = "switched";
+    trial.endDate = iso();
+    trial.reason = "用户主动选择";
+  }
+  state.methodId = next.id;
+  state.plan = E.buildTasks(state.profile, next);
+  state.match = E.matchMethods(METHODS, state.profile);
+  state.diagnosis = E.buildDiagnosis(state.profile, next);
+  startTrial(next);
+  addMessage("agent", "switch", "", { from: old, to: next, decision: { reason: "你主动选择了这个方法。先试 3 天，用反馈决定去留。" } });
+  addMessage("agent", "plan", "", { plan: state.plan, method: next, profile: state.profile, day: state.logs.length + 1 });
+  closeModal();
+  persist();
+  renderAll();
+  toast(`已切换为「${next.name}」，今天先按新卡执行。`);
+}
+
+/* ------------------------------------------------------------------ memory */
+function computeStreak() {
+  if (!state.logs.length) return 0;
+  const dates = new Set(state.logs.map((l) => l.date));
+  let cursor = new Date();
+  if (!dates.has(iso(cursor))) cursor = addDays(cursor, -1);
+  let n = 0;
+  while (dates.has(iso(cursor))) {
+    n += 1;
+    cursor = addDays(cursor, -1);
+  }
+  return n;
+}
+
+function renderMemory() {
+  const box = $("#memoryContent");
+  if (!box) return;
+  const logs = state.logs;
+  const trials = state.trials;
+  const profile = state.profile;
+  const avgEffect = avg(logs.map((l) => l.effect));
+  const avgCompletion = avg(logs.map((l) => l.completion));
+
+  if (!profile || !logs.length) {
+    box.innerHTML = `
+      <div class="memory-top"><div><div class="kicker">LONG-TERM MEMORY</div><h2>它还没开始记住你</h2><p>完成三问和第一次打卡后，这里会出现目标、方法试验和每日反馈。</p></div></div>
+      <div class="empty-state"><div class="big">🧠</div><strong>记忆不是聊天记录</strong><p>它会记住：你的起点、时间约束、哪种方法有效、什么时候该换法。</p><div class="memory-actions" style="justify-content:center"><button class="btn primary" data-action="view" data-view="chat">去完成三问 →</button><button class="btn ghost" data-action="open-demo">看演示档案</button></div></div>`;
+    return;
+  }
+
+  const timeline = [];
+  if (profile.createdAt) {
+    timeline.push({
+      date: profile.createdAt.slice(0, 10),
+      cls: "good",
+      title: "建立学习档案",
+      desc: `目标：${profile.goal} · ${profile.domain} · 每天 ${profile.minutes} 分钟`,
+    });
+  }
+  for (const t of trials) {
+    timeline.push({
+      date: t.startDate,
+      cls: "good",
+      title: `开始试验「${t.methodName}」`,
+      desc: t.status === "switched" ? "3 天微试验后触发换法" : "当前正在使用",
+    });
+    if (t.status === "switched" && t.endDate) {
+      timeline.push({
+        date: t.endDate,
+        cls: "warn",
+        title: `停用「${t.methodName}」`,
+        desc: t.reason || "效果未达标，切换方法",
+      });
+    }
+  }
+  for (const l of logs) {
+    timeline.push({
+      date: l.date,
+      cls: l.effect >= 70 ? "good" : l.effect >= 55 ? "" : "warn",
+      title: `第 ${l.day} 天 · ${l.methodName} · ${l.effect} 分`,
+      desc: `完成率 ${l.completion}% · 难度 ${l.difficulty}/5 · 自测 ${l.score}${l.note ? ` · ${l.note}` : ""}`,
+    });
+  }
+  timeline.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+
+  box.innerHTML = `
+    <div class="memory-top">
+      <div><div class="kicker">LONG-TERM MEMORY</div><h2>它记得你走过的弯路</h2><p>记忆不是聊天记录，而是下一次决策的变量。</p></div>
+      <div class="memory-actions"><button class="btn ghost" data-action="export">导出记忆</button><button class="btn ghost" data-action="clear-memory">清空记忆</button></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="k">连续学习</div><div class="v">${computeStreak()}<small> 天</small></div><div class="s">按反馈日期计算</div></div>
+      <div class="stat-card"><div class="k">反馈次数</div><div class="v">${logs.length}<small> 次</small></div><div class="s">每次都会改变下一次</div></div>
+      <div class="stat-card"><div class="k">平均完成率</div><div class="v">${avgCompletion}<small>%</small></div><div class="s">执行层面的信号</div></div>
+      <div class="stat-card"><div class="k">平均效果分</div><div class="v">${avgEffect}<small> 分</small></div><div class="s">方法是否真的有效</div></div>
+    </div>
+    <div class="memory-grid">
+      <div>
+        <div class="panel">
+          <div class="panel-title"><h3>记忆时间线</h3><span>最近 ${Math.min(timeline.length, 12)} 条</span></div>
+          <div class="timeline">
+            ${timeline.slice(0, 12).map((x) => `<div class="tl-item ${x.cls}"><div class="tl-date">${esc(dateLabel(x.date))}</div><div class="tl-title">${esc(x.title)}</div><div class="tl-desc">${esc(x.desc)}</div></div>`).join("")}
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><h3>方法试验记录</h3><span>换法不是失败</span></div>
+          <table class="trial-table">
+            <thead><tr><th>方法</th><th>状态</th><th>完成率</th><th>效果</th></tr></thead>
+            <tbody>
+              ${trials.map((t) => `<tr><td>${esc(t.methodName)}</td><td><span class="badge-status ${t.status}">${t.status === "active" ? "进行中" : "已换法"}</span></td><td>${t.avgCompletion ?? "—"}%</td><td>${t.avgEffect ?? "—"}</td></tr>`).join("")}
+            </tbody>
+          </table>
+          <div class="memory-note">💡 记忆规则：完成率低于 60% 先降门槛；效果分低于 58 或自测低于 60 才换方法。换法必须留下原因，避免“感觉不行就换”。</div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <div class="panel-title"><h3>学习档案</h3><span>${esc(profile.domain)}</span></div>
+          <div class="profile-line"><div class="k">目标</div><div class="v">${esc(profile.goal)}</div></div>
+          <div class="profile-line"><div class="k">起点</div><div class="v">${esc(profile.baseline)}</div></div>
+          <div class="profile-line"><div class="k">约束</div><div class="v">${esc(profile.constraints)}</div></div>
+          <div class="profile-line"><div class="k">节奏</div><div class="v">每天 ${profile.minutes} 分钟 · 截止约 ${profile.deadline} 天</div></div>
+          <div class="profile-line"><div class="k">当前方法</div><div class="v">${esc(METHOD_MAP.get(state.methodId)?.name || "—")}</div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><h3>它对你的判断</h3><span>可修正</span></div>
+          <div class="insight-list">
+            <div class="insight"><span class="ico">🎯</span><div>你的目标清晰度：<b>${profile.goal.length > 12 ? "较高" : "一般"}</b>。目标越具体，任务卡越容易验收。</div></div>
+            <div class="insight"><span class="ico">🧩</span><div>你当前在 <b>${esc(profile.domain)}</b> 领域；匹配时会优先考虑时间成本与证据等级。</div></div>
+            <div class="insight"><span class="ico">🔁</span><div>已记录 <b>${logs.length}</b> 次反馈；效果不好时，系统会优先换法，而不是让你“再坚持一下”。</div></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ------------------------------------------------------------------ report */
+function last7Days() {
+  const arr = [];
+  const today = new Date();
+  for (let i = 6; i >= 0; i -= 1) {
+    const d = addDays(today, -i);
+    arr.push({ iso: iso(d), label: `${d.getMonth() + 1}/${d.getDate()}` });
+  }
+  return arr;
+}
+
+function renderReport() {
+  const box = $("#reportContent");
+  if (!box) return;
+  const logs = state.logs;
+  if (!logs.length) {
+    box.innerHTML = `
+      <div class="report-top"><div><div class="kicker">LEARNING REPORT</div><h2>还没有足够的数据</h2><p>完成第一次打卡后，这里会出现完成率、效果分和方法对比。</p></div></div>
+      <div class="empty-state"><div class="big">📈</div><strong>用反馈，而不是感觉，判断效果</strong><p>至少完成 2 次打卡，才能看出趋势。</p><div class="memory-actions" style="justify-content:center"><button class="btn primary" data-action="view" data-view="chat">去完成任务 →</button></div></div>`;
+    return;
+  }
+
+  const days = last7Days();
+  const rows = days.map((d) => {
+    const ls = logs.filter((l) => l.date === d.iso);
+    return {
+      ...d,
+      completion: ls.length ? avg(ls.map((l) => l.completion)) : 0,
+      effect: ls.length ? avg(ls.map((l) => l.effect)) : 0,
+      count: ls.length,
+    };
+  });
+  const best = [...rows].sort((a, b) => b.effect - a.effect)[0];
+  const avgEffect = avg(logs.map((l) => l.effect));
+  const avgCompletion = avg(logs.map((l) => l.completion));
+  const totalMinutes = logs.reduce((s, l) => s + (l.minutes || 0), 0);
+  const bestTrial = [...state.trials].sort((a, b) => (b.avgEffect || 0) - (a.avgEffect || 0))[0];
+  const firstTrial = state.trials.find((t) => t.status === "switched");
+  const activeTrial = state.trials.find((t) => t.status === "active");
+  const improvement = firstTrial && activeTrial && firstTrial.avgEffect != null && activeTrial.avgEffect != null
+    ? activeTrial.avgEffect - firstTrial.avgEffect
+    : null;
+
+  box.innerHTML = `
+    <div class="report-top">
+      <div><div class="kicker">LEARNING REPORT</div><h2>用反馈，而不是感觉，判断效果</h2><p>${state.demo ? "演示档案 · 以下为原型内置模拟数据" : "数据来自你的本地反馈，不上传服务器"}</p></div>
+      <div class="memory-actions"><button class="btn ghost" data-action="view" data-view="memory">看记忆 →</button></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="k">连续学习</div><div class="v">${computeStreak()}<small> 天</small></div><div class="s">当前连续反馈</div></div>
+      <div class="stat-card"><div class="k">累计投入</div><div class="v">${totalMinutes}<small> 分钟</small></div><div class="s">按任务卡估算</div></div>
+      <div class="stat-card"><div class="k">平均完成率</div><div class="v">${avgCompletion}<small>%</small></div><div class="s">先看执行，再看效果</div></div>
+      <div class="stat-card"><div class="k">平均效果分</div><div class="v">${avgEffect}<small> 分</small></div><div class="s">${avgEffect >= 70 ? "方法整体有效" : "需要继续调试"}</div></div>
+    </div>
+    <div class="report-grid">
+      <div class="panel">
+        <div class="panel-title"><h3>最近 7 天 · 完成率 vs 效果分</h3><span>悬停看数值</span></div>
+        <div class="chart-box">
+          <div class="chart">
+            ${rows.map((r) => `<div class="bar-group"><div class="bar-values">${r.label}<br>完成 ${r.completion}% · 效果 ${r.effect}</div><div class="bar-stack"><div class="bar" style="height:${r.completion}%"></div><div class="bar effect" style="height:${r.effect}%"></div></div><div class="bar-label">${r.label}</div></div>`).join("")}
+          </div>
+          <div class="legend"><span><i style="background:var(--ink)"></i>完成率</span><span><i style="background:var(--coral)"></i>效果分</span><span>${best?.count ? `最好的一天：${best.label} · ${best.effect} 分` : "还没有足够数据"}</span></div>
+        </div>
+        <div class="report-note">读法：完成率低但效果高 → 任务太大；完成率高但效果低 → 方法不匹配；两者都低 → 先降门槛，不要急着换法。</div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><h3>方法对比</h3><span>${state.trials.length} 次试验</span></div>
+        <table class="trial-table">
+          <thead><tr><th>方法</th><th>状态</th><th>完成</th><th>效果</th></tr></thead>
+          <tbody>${state.trials.map((t) => `<tr><td>${esc(t.methodName)}</td><td><span class="badge-status ${t.status}">${t.status === "active" ? "进行中" : "已换法"}</span></td><td>${t.avgCompletion ?? "—"}%</td><td><b>${t.avgEffect ?? "—"}</b></td></tr>`).join("")}</tbody>
+        </table>
+        <div class="memory-note">${bestTrial ? `当前表现最好的方法：<b>${esc(bestTrial.methodName)}</b>，平均效果 ${bestTrial.avgEffect ?? "—"} 分。` : "完成一次以上试验后，这里会出现对比。"}${improvement != null ? `<br>换法后平均效果变化：<b>${improvement >= 0 ? "+" : ""}${improvement} 分</b>。` : ""}</div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <div class="panel-title"><h3>本周洞察与下一步</h3><span>可执行，不空泛</span></div>
+      <div class="insight-list">
+        <div class="insight"><span class="ico">🧠</span><div><b>执行信号：</b>平均完成率 ${avgCompletion}%。${avgCompletion < 60 ? "任务规模可能偏大，明天先缩到最小版本。" : "执行层面基本稳定，可以开始加难度。"}</div></div>
+        <div class="insight"><span class="ico">🎯</span><div><b>方法信号：</b>平均效果 ${avgEffect} 分。${avgEffect < 58 ? "已经触发换法阈值，优先换方法，而不是加时长。" : "方法有效，明天只加一个变量：素材/题目难度。"}</div></div>
+        <div class="insight"><span class="ico">🔁</span><div><b>下一步：</b>${improvement != null && improvement > 0 ? `换法后提升了 ${improvement} 分，继续用新方法做 3 天，再决定是否保留。` : "保持当前方法 3 天，用同一指标对比，不凭感觉换法。"}</div></div>
+      </div>
+    </div>`;
+}
+
+/* ------------------------------------------------------------------ demo */
+function buildDemoState(scenarioId, mode = "plan") {
+  const sc = E.SCENARIOS[scenarioId] || E.SCENARIOS.english;
+  const profile = E.buildProfile(sc.answers, "演示用户");
+  const first = METHOD_MAP.get(sc.methodId) || METHODS[0];
+  const second = METHOD_MAP.get(sc.switchId) || METHODS[1];
+  const logs = sc.logs.map((l, i) => {
+    const method = i < 3 ? first : second;
+    const effect = E.computeEffect(l);
+    return {
+      id: uid(),
+      date: iso(addDays(new Date(), -(sc.logs.length - i))),
+      day: i + 1,
+      ...l,
+      effect,
+      methodId: method.id,
+      methodName: method.name,
+      minutes: i < 3 ? 30 : 28,
+    };
+  });
+  profile.createdAt = `${logs[0].date}T09:00:00`;
+  const trial1 = {
+    id: uid(),
+    methodId: first.id,
+    methodName: first.name,
+    startDate: logs[0].date,
+    endDate: logs[2]?.date || logs[0].date,
+    status: "switched",
+    logIds: logs.slice(0, 3).map((l) => l.id),
+    avgCompletion: avg(logs.slice(0, 3).map((l) => l.completion)),
+    avgEffect: avg(logs.slice(0, 3).map((l) => l.effect)),
+    reason: "完成率不低，但自测连续低于 60：方法没有转化为输出。",
+  };
+  const trial2 = {
+    id: uid(),
+    methodId: second.id,
+    methodName: second.name,
+    startDate: logs[3]?.date || logs[0].date,
+    endDate: null,
+    status: "active",
+    logIds: logs.slice(3).map((l) => l.id),
+    avgCompletion: avg(logs.slice(3).map((l) => l.completion)),
+    avgEffect: avg(logs.slice(3).map((l) => l.effect)),
+  };
+
+  const s = defaultState();
+  state = s;
+  s.demo = sc;
+  s.gate = { step: 3, answers: sc.answers.slice(), complete: true };
+  s.profile = profile;
+  s.logs = logs;
+  s.trials = logs.length >= 3 ? [trial1, trial2] : [trial2].filter(Boolean);
+  s.methodId = second.id;
+  s.match = E.matchMethods(METHODS, profile);
+  const scoredSecond = s.match.find((m) => m.id === second.id) || { ...second, fit: 86, reasons: ["该场景的首选微试验"] };
+  s.diagnosis = E.buildDiagnosis(profile, scoredSecond);
+  s.plan = E.buildTasks(profile, second);
+  if (mode === "plan") s.plan.tasks[0].done = true;
+
+  addMessage(
+    "agent",
+    "text",
+    `这是「${sc.label}」的演示档案。我用过去 ${logs.length} 天的反馈，让你看到记忆如何影响今天的判断。\n\n这不是一次性推荐：第 3 天效果不达标后，系统触发了换法。`
+  );
+  addMessage("agent", "gate");
+
+  if (mode === "summary") {
+    const oldLog = logs[2];
+    const decision = E.decideOutcome(oldLog);
+    decision.action = "switch";
+    decision.type = "方法不匹配";
+    decision.headline = "你执行了，但效果没有跟上，建议换法。";
+    decision.reason = "完成率 55%、自测 48，说明「做了」但没有转化为可检查的结果。不是你不努力，是方法和当前瓶颈不匹配。";
+    const nextDay = E.buildNextDay(profile, first, { ...decision, nextMethod: second });
+    addMessage("agent", "summary", "", { log: oldLog, decision, method: first, nextDay, nextMethod: second });
+    addMessage("agent", "switch", "", { from: first, to: second, decision });
+    addMessage("agent", "plan", "", { plan: s.plan, method: second, profile, day: logs.length + 1 });
+  } else {
+    addMessage("agent", "diagnosis", "", { diagnosis: s.diagnosis });
+    addMessage("agent", "method", "", { method: scoredSecond, alternatives: s.match });
+    addMessage("agent", "plan", "", { plan: s.plan, method: second, profile, day: logs.length + 1 });
+    addMessage("agent", "text", "演示档案已加载。你可以点任务卡里的复选框，或直接「完成打卡」看总结与换法逻辑。");
+  }
+
+  s.activeView = ["memory", "report", "library"].includes(mode) ? mode : "chat";
+  return s;
+}
+
+function openDemo() {
+  const cards = Object.values(E.SCENARIOS).map((s) => `
+    <button class="demo-card" data-action="load-demo" data-scenario="${s.id}">
+      <div class="e">${s.emoji}</div>
+      <div class="t">${esc(s.label)}</div>
+      <div class="s">${esc(s.answers[0])}</div>
+      <div class="go">加载 6 天记忆与今日任务 →</div>
+    </button>`).join("");
+  showModal(`
+    <div class="modal-backdrop">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="演示档案">
+        <div class="modal-head"><div><h3>演示档案</h3><p>用内置的模拟学习记录，快速看清「记忆 → 判断 → 换法」怎么发生。</p></div><button class="modal-close" data-action="close-modal">✕</button></div>
+        <div class="modal-body">
+          <div class="demo-modal-grid">${cards}</div>
+          <div class="feedback-tip" style="margin-top:14px">🧪 演示数据只存在浏览器本地，不会上传；退出演示后可回到全新用户。</div>
+        </div>
+        <div class="modal-foot"><button class="btn ghost" data-action="close-modal">取消</button><button class="btn primary" data-action="demo-gate">从三问开始 →</button></div>
+      </div>
+    </div>`);
+}
+
+function loadDemo(scenarioId) {
+  state = buildDemoState(scenarioId, "plan");
+  closeModal();
+  renderAll();
+  toast("演示档案已加载。");
+}
+
+/* ------------------------------------------------------------------ modal / reset */
+function showModal(html) {
+  const root = $("#modalRoot");
+  root.innerHTML = html;
+  document.body.style.overflow = "hidden";
+}
+
+function closeModal() {
+  $("#modalRoot").innerHTML = "";
+  document.body.style.overflow = "";
+}
+
+function openConfirm(title, body, action) {
+  showModal(`
+    <div class="modal-backdrop">
+      <div class="modal narrow" role="dialog" aria-modal="true">
+        <div class="modal-head"><div><h3>${esc(title)}</h3><p>${esc(body)}</p></div><button class="modal-close" data-action="close-modal">✕</button></div>
+        <div class="modal-foot"><button class="btn ghost" data-action="close-modal">取消</button><button class="btn coral" data-action="${escAttr(action)}">确认</button></div>
+      </div>
+    </div>`);
+}
+
+function resetState() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {}
+  state = defaultState();
+  ensureGreeting();
+  history.replaceState(null, "", location.pathname);
+  closeModal();
+  renderAll();
+  toast("已重置。三问会重新开始。");
+}
+
+function clearMemory() {
+  openConfirm("清空这段学习记忆？", "目标、打卡、方法试验都会删除，无法恢复。建议先导出。", "confirm-clear");
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), state }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `methodlab-memory-${iso()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast("已导出 JSON。");
+}
+
+/* ------------------------------------------------------------------ health */
+async function checkHealth() {
+  try {
+    const res = await fetch("/api/health", { cache: "no-store" });
+    if (!res.ok) throw new Error("no server");
+    const data = await res.json();
+    state.llmAvailable = Boolean(data.llm);
+    state.llmModel = data.model || "AI 增强";
+  } catch {
+    state.llmAvailable = false;
+  }
+  renderTopbar();
+  persist();
+}
+
+function toggleLLM() {
+  if (!state.llmAvailable) {
+    toast("当前是本地教练引擎。要启用 AI 增强，请用 npm start 启动，并配置 DEEPSEEK_API_KEY。");
+    return;
+  }
+  state.llmEnabled = !state.llmEnabled;
+  persist();
+  renderTopbar();
+  toast(state.llmEnabled ? "AI 增强已开启：语言表达更自然，门槛与匹配仍由规则引擎保证。" : "已切回本地教练引擎。");
+}
+
+/* ------------------------------------------------------------------ toast */
+let toastTimer = null;
+function toast(msg) {
+  const el = $("#toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2800);
+}
+
+/* ------------------------------------------------------------------ events */
+function setView(view) {
+  if (!PAGE_META[view]) return;
+  state.activeView = view;
+  renderNav();
+  if (view === "library") renderLibrary();
+  if (view === "memory") renderMemory();
+  if (view === "report") renderReport();
+  if (view === "chat") setTimeout(scrollChat, 30);
+  persist();
+}
+
+function autoResize(el) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${Math.min(el.scrollHeight, 130)}px`;
+}
+
+function bindEvents() {
+  document.addEventListener("click", (e) => {
+    if (e.target.classList.contains("modal-backdrop")) {
+      closeModal();
+      return;
+    }
+    const el = e.target.closest("[data-action]");
+    if (!el) return;
+    const action = el.dataset.action;
+
+    if (action === "view") {
+      setView(el.dataset.view);
+      return;
+    }
+    if (action === "chip") {
+      sendMessage(el.dataset.text || "");
+      return;
+    }
+    if (action === "focus-input") {
+      $("#messageInput")?.focus();
+      return;
+    }
+    if (action === "toggle-task") {
+      toggleTask(el.dataset.task);
+      return;
+    }
+    if (action === "open-feedback") {
+      openFeedback();
+      return;
+    }
+    if (action === "open-method") {
+      openMethod(el.dataset.id);
+      return;
+    }
+    if (action === "try-method") {
+      tryMethod(el.dataset.id);
+      return;
+    }
+    if (action === "open-demo") {
+      openDemo();
+      return;
+    }
+    if (action === "load-demo") {
+      loadDemo(el.dataset.scenario);
+      return;
+    }
+    if (action === "demo-gate") {
+      closeModal();
+      state = defaultState();
+      ensureGreeting();
+      history.replaceState(null, "", location.pathname + "?demo=gate");
+      renderAll();
+      toast("已回到三问起点。");
+      return;
+    }
+    if (action === "reset") {
+      openConfirm("重置这段学习记忆？", "会清空目标、方法试验和打卡反馈，无法恢复。", "confirm-reset");
+      return;
+    }
+    if (action === "confirm-reset") {
+      resetState();
+      return;
+    }
+    if (action === "clear-memory") {
+      clearMemory();
+      return;
+    }
+    if (action === "confirm-clear") {
+      resetState();
+      return;
+    }
+    if (action === "export") {
+      exportData();
+      return;
+    }
+    if (action === "toggle-llm") {
+      toggleLLM();
+      return;
+    }
+    if (action === "filter-domain") {
+      state.libraryFilter = el.dataset.domain;
+      renderLibrary();
+      return;
+    }
+    if (action === "close-modal") {
+      closeModal();
+      return;
+    }
+    if (action === "mood") {
+      feedbackDraft.mood = Number(el.dataset.mood);
+      $$(".mood-btn").forEach((b) => b.classList.toggle("active", Number(b.dataset.mood) === feedbackDraft.mood));
+      return;
+    }
+    if (action === "diff") {
+      feedbackDraft.difficulty = Number(el.dataset.diff);
+      $$(".diff-btn").forEach((b) => b.classList.toggle("active", Number(b.dataset.diff) === feedbackDraft.difficulty));
+      return;
+    }
+  });
+
+  document.addEventListener("input", (e) => {
+    if (e.target.id === "librarySearch") {
+      state.librarySearch = e.target.value;
+      renderMethodGrid();
+      return;
+    }
+    if (e.target.matches("[data-range]")) {
+      const key = e.target.dataset.range;
+      if (feedbackDraft) feedbackDraft[key] = Number(e.target.value);
+      const out = document.querySelector(`[data-range-value="${key}"]`);
+      if (out) out.textContent = key === "completion" ? `${e.target.value}%` : e.target.value;
+    }
+  });
+
+  document.addEventListener("submit", (e) => {
+    if (e.target.id === "feedbackForm") {
+      e.preventDefault();
+      submitFeedback();
+    }
+  });
+
+  const composer = $("#composer");
+  composer?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    sendMessage($("#messageInput")?.value || "");
+  });
+
+  const input = $("#messageInput");
+  input?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      composer?.requestSubmit();
+    }
+  });
+  input?.addEventListener("input", () => autoResize(input));
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeModal();
+  });
+}
+
+/* ------------------------------------------------------------------ start */
+init();
+
+</script>
+<div style="position:fixed;right:12px;bottom:12px;z-index:90;padding:6px 9px;border-radius:99px;background:rgba(16,35,30,.82);color:#b9f2d0;font:10px/1.4 'Microsoft YaHei',sans-serif;pointer-events:none">静态演示版 · 数据保存在浏览器本地</div>
+</body>
+</html>

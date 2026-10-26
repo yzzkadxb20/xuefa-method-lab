@@ -1,0 +1,15 @@
+{
+  "name": "method-lab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "学法实验室：把学习方法调试到适合你。",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
+    "build:standalone": "node scripts/build-standalone.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
