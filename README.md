@@ -227,7 +227,7 @@ git log --oneline --decorate
 - 本地 bare 远程：`D:\deepseek-harness\default-workspace\git-backup\method-lab.git`（remote 名 `backup`）
 - 远程记录：`deliverables/git-remotes.txt`
 
-> GitHub 在当前网络不可达。已推送到本地 bare 仓库作为 Git 远程备份；Gitee（码云）可访问，可作为异地备份。
+> 已推送到 GitHub 私有仓库：`git@github.com:yzzkadxb20/xuefa-method-lab.git`（`main` + `v1.0-submission`）。本地 bare 仓库 `backup` 仍保留，Gitee 可作为备用异地备份。
 
 从 bundle 恢复：
 
