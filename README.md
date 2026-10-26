@@ -213,7 +213,7 @@ TEST_BASE=http://127.0.0.1:4174 node scripts/cdp-test.mjs
 
 ## 11. 本机 Git 记录
 
-本机已初始化 Git 仓库（未推送到远程）：
+本机已初始化 Git 仓库，并推送到了本地 bare 远程备份：
 
 ```bash
 cd method-lab
@@ -224,6 +224,10 @@ git log --oneline --decorate
 - 标签：`v1.0-submission`
 - 导出日志：`deliverables/git-log.txt`
 - 可恢复仓库包：`deliverables/method-lab.bundle`
+- 本地 bare 远程：`D:\deepseek-harness\default-workspace\git-backup\method-lab.git`（remote 名 `backup`）
+- 远程记录：`deliverables/git-remotes.txt`
+
+> GitHub 在当前网络不可达。已推送到本地 bare 仓库作为 Git 远程备份；Gitee（码云）可访问，可作为异地备份。
 
 从 bundle 恢复：
 
