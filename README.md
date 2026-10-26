@@ -211,6 +211,28 @@ TEST_BASE=http://127.0.0.1:4174 node scripts/cdp-test.mjs
   - 源码、设计稿、提交记录
 - 如需更强访问控制，可在 Netlify 的 Access control / Visitor access 中设置站点密码，并把密码填进赛事要求的“账号和密码”栏；不要用前端 JS 假密码，那可以被绕过。
 
-## 11. 一句话
+## 11. 本机 Git 记录
+
+本机已初始化 Git 仓库（未推送到远程）：
+
+```bash
+cd method-lab
+git log --oneline --decorate
+```
+
+- 提交：`622c494`（`chore: submission snapshot for 学法实验室 v1.0`）
+- 标签：`v1.0-submission`
+- 导出日志：`deliverables/git-log.txt`
+- 可恢复仓库包：`deliverables/method-lab.bundle`
+
+从 bundle 恢复：
+
+```bash
+git clone method-lab.bundle method-lab-restored
+```
+
+> Git 只在本机，commit 时间可作辅助创作时间线，不等同于第三方公证；比赛提交回执更重要。
+
+## 12. 一句话
 
 **不承诺提分，承诺不消失。**
