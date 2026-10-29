@@ -5,4 +5,5 @@ data/*.db-wal
 data/.admin-credentials
 .env
 .edge-*/
+.netlify/
 .DS_Store

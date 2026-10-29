@@ -4,6 +4,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
+import methodSeed from "./method-seed.mjs";
 
 const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -39,7 +40,7 @@ if (!DATABASE_URL) {
 const pool = new Pool({
   connectionString: DATABASE_URL,
   ssl: USE_SSL ? { rejectUnauthorized: false } : undefined,
-  max: 5,
+  max: process.env.NETLIFY === "true" ? 1 : 5,
   idleTimeoutMillis: 30000,
 });
 
@@ -117,9 +118,7 @@ async function initDb() {
     CREATE INDEX IF NOT EXISTS idx_methods_published ON methods(published);
   `);
 
-  const file = path.join(PUBLIC_DIR, "data", "methods.json");
-  const payload = JSON.parse(fs.readFileSync(file, "utf8"));
-  for (const m of payload.methods || []) {
+  for (const m of methodSeed) {
     await q(
       `INSERT INTO methods (id, data_json, published, created_at, updated_at, updated_by)
        VALUES ($1, $2, TRUE, $3, $4, NULL) ON CONFLICT (id) DO NOTHING`,
@@ -585,7 +584,7 @@ async function serveStatic(req, res, url) {
   fs.createReadStream(file).pipe(res);
 }
 
-const server = http.createServer(async (req, res) => {
+export const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
     if (url.pathname.startsWith("/api/")) {
@@ -609,8 +608,14 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-await initDb();
-server.listen(PORT, HOST, () => {
-  console.log(`学法实验室 v2 (Postgres) running at http://localhost:${PORT}`);
-  console.log(`admin login: ${ADMIN_USERNAME}${IS_PROD ? " (password from env)" : ` / ${ADMIN_PASSWORD}`}`);
-});
+export async function init() {
+  await initDb();
+}
+
+if (process.env.NETLIFY !== "true") {
+  await init();
+  server.listen(PORT, HOST, () => {
+    console.log(`学法实验室 v2 (Postgres) running at http://localhost:${PORT}`);
+    console.log(`admin login: ${ADMIN_USERNAME}${IS_PROD ? " (password from env)" : ` / ${ADMIN_PASSWORD}`}`);
+  });
+}
