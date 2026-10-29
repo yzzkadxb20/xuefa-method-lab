@@ -106,8 +106,11 @@ body.admin-body { margin: 0; background: var(--paper); }
 @media (max-width: 760px) {
   .admin-shell { display: block; }
   .admin-side { position: relative; height: auto; padding: 14px; }
-  .admin-side .side-label, .admin-side .side-card, .admin-side .sidebar-foot .user-chip, .admin-side .sidebar-foot .admin-logout { display: none; }
+  .admin-side .side-label, .admin-side .side-card, .admin-side .sidebar-foot .user-chip { display: none; }
   .admin-side .nav { flex-direction: row; }
+  .admin-side .sidebar-foot { display: flex; flex-direction: row; gap: 8px; align-items: center; }
+  .admin-side .sidebar-foot .demo-btn { flex: 1 1 auto; }
+  .admin-side .sidebar-foot .admin-logout { display: block; flex: 0 0 auto; }
   .admin-top { padding: 14px; }
   .admin-top h1 { font-size: 18px; }
   .admin-view { padding: 14px; }
