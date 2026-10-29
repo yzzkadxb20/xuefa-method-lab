@@ -129,8 +129,12 @@ function seedAdmin() {
   db.prepare(
     "INSERT INTO users (id, username, password_hash, role, created_at) VALUES (?, ?, ?, 'admin', ?)"
   ).run(id, username, hashPassword(password), now());
-  console.log(`[init] admin account: ${username} / ${password}`);
-  if (IS_PROD) console.warn("[init] WARNING: change ADMIN_PASSWORD in production.");
+  if (IS_PROD) {
+    console.log(`[init] admin account created: ${username} (password from ADMIN_PASSWORD env)`);
+    console.warn("[init] WARNING: set a strong ADMIN_PASSWORD and keep it out of logs.");
+  } else {
+    console.log(`[init] admin account: ${username} / ${password}`);
+  }
 }
 
 seedMethods();
@@ -654,5 +658,5 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, HOST, () => {
   console.log(`学法实验室 v2 running at http://localhost:${PORT}`);
   console.log(`database: ${DB_PATH}`);
-  console.log(`admin login: ${ADMIN_USERNAME} / ${ADMIN_PASSWORD}${IS_PROD ? " (change in production!)" : ""}`);
+  console.log(`admin login: ${ADMIN_USERNAME}${IS_PROD ? " (password from ADMIN_PASSWORD env)" : ` / ${ADMIN_PASSWORD}`}`);
 });
