@@ -6,9 +6,13 @@
   "description": "学法实验室 v2：登录、跨设备记忆、用户/管理员双角色。",
   "scripts": {
     "start": "node server.mjs",
-    "dev": "node server.mjs"
+    "dev": "node server.mjs",
+    "start:pg": "node server-pg.mjs"
   },
   "engines": {
     "node": ">=22.5"
+  },
+  "dependencies": {
+    "pg": "^8.23.1"
   }
 }
