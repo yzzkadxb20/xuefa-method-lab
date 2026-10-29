@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#10231e" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>登录 · 学法实验室</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="login.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2310231e'/%3E%3Cpath d='M25 12h14M28 12v13L18 45a6 6 0 0 0 5.4 9h17.2A6 6 0 0 0 46 45L36 25V12' fill='none' stroke='%23b9f2d0' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M21 39h22' stroke='%23ff7a59' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+</head>
+<body class="auth-body">
+  <div class="auth-shell">
+    <section class="auth-brand">
+      <div class="auth-brand-top">
+        <div class="auth-mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40" fill="none">
+            <path d="M15 5h10M17 5v9.5L8.8 28.5A4.8 4.8 0 0 0 13 35.5h14a4.8 4.8 0 0 0 4.2-7L23 14.5V5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12.5 27.5h15" stroke="#ff7a59" stroke-width="2.6" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div><div class="auth-wordmark">学法实验室</div><div class="auth-wordmark-sub">METHOD LAB</div></div>
+      </div>
+
+      <div class="auth-brand-copy">
+        <div class="auth-eyebrow">ACCOUNT · MEMORY · COACHING</div>
+        <h1>登录一次，<br>让教练记住你。</h1>
+        <p>目标、起点、方法试验、每日反馈，都跟着账号走。换一台设备，它仍然知道你在哪一步。</p>
+        <div class="auth-points">
+          <div><span>01</span><b>三问硬门槛</b><em>答完才进入匹配</em></div>
+          <div><span>02</span><b>每日反馈闭环</b><em>完成率、难度、自测、卡点</em></div>
+          <div><span>03</span><b>效果不好就换法</b><em>方法不是信仰，是待验证的假设</em></div>
+        </div>
+      </div>
+
+      <div class="auth-brand-foot">
+        <span>43 张方法卡 · 9 个领域</span>
+        <span class="auth-dot"></span>
+        <span>全周期陪伴</span>
+      </div>
+    </section>
+
+    <section class="auth-panel">
+      <div class="auth-card">
+        <div class="auth-card-head">
+          <div class="auth-kicker">ACCOUNT / 账户</div>
+          <h2 id="authTitle">欢迎回来</h2>
+          <p id="authSub">登录后，你的学习记忆会从上次停下的地方继续。</p>
+        </div>
+
+        <div class="auth-tabs" role="tablist">
+          <button type="button" class="auth-tab active" data-tab="login" role="tab" aria-selected="true">登录</button>
+          <button type="button" class="auth-tab" data-tab="register" role="tab" aria-selected="false">注册</button>
+        </div>
+
+        <form id="authForm" autocomplete="on">
+          <label class="auth-field">
+            <span>用户名</span>
+            <input id="username" name="username" type="text" autocomplete="username" placeholder="3-24 位，中英文/数字/下划线" maxlength="24" required />
+          </label>
+          <label class="auth-field">
+            <span>密码</span>
+            <input id="password" name="password" type="password" autocomplete="current-password" placeholder="至少 8 位" minlength="8" required />
+          </label>
+          <label class="auth-field" id="confirmWrap" hidden>
+            <span>确认密码</span>
+            <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="再输入一次" minlength="8" />
+          </label>
+          <div class="auth-error" id="authError" role="alert"></div>
+          <button class="auth-submit" id="submitBtn" type="submit">登录</button>
+        </form>
+
+        <div class="auth-demo">
+          <span>用户演示</span>
+          <code>demo / demo12345</code>
+          <button type="button" id="fillUser">填入</button>
+        </div>
+        <div class="auth-demo">
+          <span>管理员演示</span>
+          <code>账号与密码见提交说明</code>
+        </div>
+
+        <div class="auth-foot">
+          <span>没有账号？</span>
+          <button type="button" id="toRegister">30 秒建立学习档案</button>
+        </div>
+        <div class="auth-foot auth-foot-muted">
+          <a href="https://roaring-pixie-05f195.netlify.app/?demo=gate" target="_blank" rel="noreferrer">先看无登录版 Demo →</a>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script type="module" src="js/login.js"></script>
+</body>
+</html>

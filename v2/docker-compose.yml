@@ -1,0 +1,16 @@
+services:
+  methodlab:
+    build: .
+    ports:
+      - "4180:4180"
+    environment:
+      NODE_ENV: production
+      PORT: 4180
+      DATA_DIR: /app/data
+      DB_PATH: /app/data/methodlab.db
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: change-me-before-deploy
+      COOKIE_SECURE: "0"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#10231e" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>管理后台 · 学法实验室</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2310231e'/%3E%3Cpath d='M25 12h14M28 12v13L18 45a6 6 0 0 0 5.4 9h17.2A6 6 0 0 0 46 45L36 25V12' fill='none' stroke='%23b9f2d0' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M21 39h22' stroke='%23ff7a59' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+</head>
+<body class="admin-body">
+  <div class="admin-shell">
+    <aside class="admin-side">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40" fill="none">
+            <path d="M15 5h10M17 5v9.5L8.8 28.5A4.8 4.8 0 0 0 13 35.5h14a4.8 4.8 0 0 0 4.2-7L23 14.5V5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12.5 27.5h15" stroke="#ff7a59" stroke-width="2.6" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="brand-text"><div class="brand-name">学法实验室</div><div class="brand-sub">ADMIN CONSOLE</div></div>
+      </div>
+
+      <div class="side-label">管理台</div>
+      <nav class="nav">
+        <button class="nav-item active" data-view="suggestions"><span class="nav-icon">💬</span><span>问题与建议</span><span class="nav-badge" id="pendingBadge">0</span></button>
+        <button class="nav-item" data-view="methods"><span class="nav-icon">🗂️</span><span>方法库</span><span class="nav-count" id="methodsBadge">43</span></button>
+        <button class="nav-item" data-view="users"><span class="nav-icon">👥</span><span>用户概况</span></button>
+      </nav>
+
+      <div class="side-card">
+        <div class="side-card-top"><span>管理员原则</span><span class="side-dot"></span></div>
+        <p>处理问题，不评价用户；修改方法，不绕过证据；发布之前，先看边界。</p>
+      </div>
+
+      <div class="sidebar-foot">
+        <button class="demo-btn" id="backApp"><span>🧪</span> 返回用户端 <span class="demo-arrow">→</span></button>
+        <div class="user-chip">
+          <div class="avatar-small" id="adminAvatar">管</div>
+          <div class="user-meta"><div class="user-name" id="adminName">管理员</div><div class="user-sub">已登录 · 管理权限</div></div>
+        </div>
+        <button class="admin-logout" id="logoutBtn">退出登录</button>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-top">
+        <div>
+          <div class="crumb" id="adminCrumb">管理台 / 问题与建议</div>
+          <h1 id="adminTitle">把用户的反馈，变成下一次改进。</h1>
+        </div>
+        <div class="admin-top-right">
+          <span class="admin-badge">ADMIN</span>
+          <button class="icon-btn" id="refreshBtn" title="刷新">↻</button>
+        </div>
+      </header>
+
+      <section class="admin-view active" id="view-suggestions">
+        <div class="admin-stats" id="suggestionStats"></div>
+        <div class="admin-split">
+          <section class="admin-panel">
+            <div class="panel-head">
+              <div><h2>问题与建议</h2><p>用户提交的系统问题、方法建议、改进意见。</p></div>
+              <div class="ticket-filters" id="suggestionFilters"></div>
+            </div>
+            <div class="ticket-list" id="suggestionList"></div>
+          </section>
+          <section class="admin-panel detail-panel" id="suggestionDetail">
+            <div class="empty-state"><div class="big">💬</div><strong>选择一条建议</strong><p>左侧点击后，在这里处理状态和回复。</p></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="admin-view" id="view-methods">
+        <div class="admin-split methods-split">
+          <section class="admin-panel">
+            <div class="panel-head">
+              <div><h2>方法库</h2><p>编辑方法卡，发布后用户端刷新即可看到。</p></div>
+              <button class="admin-primary" id="newMethodBtn">+ 新增方法</button>
+            </div>
+            <input class="admin-search" id="methodSearch" placeholder="搜索方法名 / 领域 / ID…" />
+            <div class="method-admin-list" id="methodList"></div>
+          </section>
+          <section class="admin-panel" id="methodEditor">
+            <div class="empty-state"><div class="big">🗂️</div><strong>选择一张方法卡</strong><p>左侧点击编辑，或新增一个方法。</p></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="admin-view" id="view-users">
+        <div class="admin-panel">
+          <div class="panel-head"><div><h2>用户概况</h2><p>只读：账号、注册时间、最近同步、建议数量；不显示密码。</p></div></div>
+          <div class="user-table-wrap"><table class="admin-table" id="userTable"></table></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status"></div>
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>

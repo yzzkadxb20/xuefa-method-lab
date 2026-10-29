@@ -1,0 +1,14 @@
+{
+  "name": "method-lab-pro",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "学法实验室 v2：登录、跨设备记忆、用户/管理员双角色。",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}

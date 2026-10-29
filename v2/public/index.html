@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#10231e" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="copyright" content="© 2026 学法实验室 · 原创作品，未经许可不得复制或商用" />
+  <title>学法实验室 · 把方法调试到适合你</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2310231e'/%3E%3Cpath d='M25 12h14M28 12v13L18 45a6 6 0 0 0 5.4 9h17.2A6 6 0 0 0 46 45L36 25V12' fill='none' stroke='%23b9f2d0' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M21 39h22' stroke='%23ff7a59' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40" fill="none">
+            <path d="M15 5h10M17 5v9.5L8.8 28.5A4.8 4.8 0 0 0 13 35.5h14a4.8 4.8 0 0 0 4.2-7L23 14.5V5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12.5 27.5h15" stroke="#ff7a59" stroke-width="2.6" stroke-linecap="round"/>
+            <circle cx="18" cy="31" r="1.5" fill="#ff7a59"/>
+            <circle cx="23" cy="30" r="1" fill="#ff7a59"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">学法实验室</div>
+          <div class="brand-sub">METHOD LAB</div>
+        </div>
+      </div>
+
+      <div class="side-label">教练台</div>
+      <nav class="nav" aria-label="主导航">
+        <button class="nav-item active" data-action="view" data-view="chat">
+          <span class="nav-icon">🧪</span><span>今日教练</span><span class="nav-badge" id="navToday">1</span>
+        </button>
+        <button class="nav-item" data-action="view" data-view="library">
+          <span class="nav-icon">🗂️</span><span>方法库</span><span class="nav-count" id="navMethods">43</span>
+        </button>
+        <button class="nav-item" data-action="view" data-view="memory">
+          <span class="nav-icon">🧠</span><span>我的记忆</span>
+        </button>
+        <button class="nav-item" data-action="view" data-view="report">
+          <span class="nav-icon">📈</span><span>学习报告</span>
+        </button>
+      </nav>
+
+      <div class="side-card">
+        <div class="side-card-top"><span>今日原则</span><span class="side-dot"></span></div>
+        <p>先问 3 个问题，再给方案。答不完，就不进入匹配。</p>
+        <div class="mini-progress"><span id="gateMiniBar"></span></div>
+        <div class="mini-label"><span id="gateMiniText">0 / 3</span><span>硬门槛</span></div>
+      </div>
+
+      <div class="sidebar-foot">
+        <button class="demo-btn" data-action="view" data-view="memory"><span>🧠</span> 查看我的记忆 <span class="demo-arrow">→</span></button>
+        <div class="account-actions">
+          <button class="side-action" data-action="open-suggestion">💡 提建议 / 报错</button>
+          <button class="side-action" id="adminLink" data-action="open-admin" hidden>🛠 管理后台</button>
+          <button class="side-action danger" data-action="logout">退出</button>
+        </div>
+        <div class="user-chip">
+          <div class="avatar-small" id="userAvatar">学</div>
+          <div class="user-meta">
+            <div class="user-name" id="userName">学习用户</div>
+            <div class="user-sub" id="userSub">正在加载账号…</div>
+          </div>
+          <div class="streak" id="userStreak" title="连续学习天数">0<span>d</span></div>
+        </div>
+        <div class="privacy">🔐 服务端记忆 · 仅你可见</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="crumb" id="crumb">教练台 / 今日</div>
+          <h1 id="pageTitle">今天，先把方法调对。</h1>
+        </div>
+        <div class="topbar-right">
+          <div class="date" id="todayLabel"></div>
+          <button class="status-pill" id="llmPill" data-action="toggle-llm" title="点击查看 AI 增强状态">
+            <span class="dot"></span><span id="llmText">本地教练引擎</span>
+          </button>
+          <button class="icon-btn" data-action="reset" title="重置对话" aria-label="重置对话">↺</button>
+        </div>
+      </header>
+
+      <section class="view active" id="view-chat">
+        <div class="chat-shell">
+          <div class="chat-column">
+            <div class="chat-stream" id="chatStream" aria-live="polite"></div>
+            <div class="composer-wrap">
+              <div class="suggestions" id="suggestions"></div>
+              <form class="composer" id="composer" autocomplete="off">
+                <textarea id="messageInput" rows="1" placeholder="回答第 1 问：你最想解决的学习目标是什么？" aria-label="输入消息"></textarea>
+                <button class="send-btn" type="submit" aria-label="发送">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </form>
+              <div class="composer-note"><span>Enter 发送 · Shift + Enter 换行</span><span>三问未完成时，不会生成最终方案</span></div>
+            </div>
+          </div>
+          <aside class="context-column" id="contextPanel"></aside>
+        </div>
+      </section>
+
+      <section class="view" id="view-library">
+        <div class="view-head">
+          <div>
+            <div class="kicker">METHOD LIBRARY</div>
+            <h2>43 张方法卡，9 个领域</h2>
+            <p>不是“名人方法合集”，而是可执行、可验证、可退出的方法资产。</p>
+          </div>
+          <div class="search-wrap">
+            <span>⌕</span>
+            <input id="librarySearch" type="search" placeholder="搜方法、领域、卡点…" />
+          </div>
+        </div>
+        <div class="filter-row" id="domainFilters"></div>
+        <div class="method-grid" id="methodGrid"></div>
+      </section>
+
+      <section class="view" id="view-memory">
+        <div id="memoryContent"></div>
+      </section>
+
+      <section class="view" id="view-report">
+        <div id="reportContent"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modalRoot"></div>
+  <div id="toast" class="toast" role="status"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

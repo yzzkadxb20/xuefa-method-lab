@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: method-lab-v2
+    runtime: node
+    plan: starter
+    buildCommand: ""
+    startCommand: "node server.mjs"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /data
+      - key: DB_PATH
+        value: /data/methodlab.db
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: COOKIE_SECURE
+        value: "1"
+    disk:
+      name: methodlab-data
+      mountPath: /data
+      sizeGB: 1
