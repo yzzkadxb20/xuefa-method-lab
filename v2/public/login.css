@@ -93,5 +93,6 @@ body.auth-body {
   .auth-brand { min-height: 300px; }
   .auth-brand-copy h1 { font-size: 32px; }
   .auth-brand-copy p { font-size: 11.5px; }
+  .auth-panel { padding-bottom: 92px; }
   .auth-card { padding: 24px 20px 20px; }
 }

@@ -648,6 +648,31 @@ a { color: inherit; }
   .plan-top, .method-top { flex-wrap: wrap; gap: 6px; }
   .nav-icon { display: none; }
   .nav-item { font-size: 10.5px; padding: 8px 8px; }
+  .sidebar-foot .demo-btn { display: none; }
+  .account-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .side-action { flex: 1 1 auto; padding: 8px 10px; font-size: 10px; text-align: center; }
+  .side-action.danger { flex: 0 0 56px; }
+  .sidebar-foot .user-chip { display: flex; padding: 8px 2px 0; border-top: none; }
+  /* 手机端把右栏上下文改成横向可滑动的信息带 */
+  .chat-shell { display: flex; flex-direction: column; }
+  .context-column {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    order: -1;
+    flex: 0 0 auto;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 10px 14px 6px;
+    background: rgba(255, 253, 248, .72);
+    border-bottom: 1px solid var(--line);
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ctx-card { flex: 0 0 260px; height: auto; scroll-snap-align: start; }
+  .ctx-principles { display: none; }
+  #view-chat.active { height: auto; min-height: 0; }
+  .chat-column { flex: 1 1 auto; min-height: 0; }
   .composer-note span:last-child { display: none; }
   .message { gap: 8px; }
   .avatar { width: 28px; height: 28px; flex-basis: 28px; font-size: 11px; }

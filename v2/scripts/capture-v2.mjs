@@ -5,6 +5,8 @@ import path from "node:path";
 const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
 const PORT = 9341;
 const BASE = process.env.CAPTURE_BASE || "http://127.0.0.1:4180";
+const MOBILE = process.env.MOBILE === "1";
+const SHOT_PREFIX = process.env.SHOT_PREFIX || "";
 const PROFILE = path.join(process.cwd(), `.edge-capture-${Date.now()}`);
 const SHOTS = path.resolve(process.cwd(), "..", "screenshots");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -66,6 +68,15 @@ async function main() {
   cdp.on("Runtime.exceptionThrown", (p) => errors.push(p.exceptionDetails?.text || "exception"));
   await cdp.send("Runtime.enable");
   await cdp.send("Page.enable");
+  if (MOBILE) {
+    await cdp.send("Emulation.setDeviceMetricsOverride", {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 2,
+      mobile: true,
+    });
+    await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: true });
+  }
 
   const val = async (expression) => {
     const r = await cdp.send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true });
@@ -83,8 +94,8 @@ async function main() {
   const fill = (sel, value) => val(`(() => { const el=document.querySelector(${JSON.stringify(sel)}); el.value=${JSON.stringify(value)}; el.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`);
   const click = (sel) => val(`(() => { const el=document.querySelector(${JSON.stringify(sel)}); if(!el) throw new Error('missing ${sel}'); el.click(); return true; })()`);
   const shot = async (name) => {
-    const r = await cdp.send("Page.captureScreenshot", { format: "png" });
-    fs.writeFileSync(path.join(SHOTS, name), Buffer.from(r.data, "base64"));
+    const r = await cdp.send("Page.captureScreenshot", { format: "png", captureBeyondViewport: MOBILE });
+    fs.writeFileSync(path.join(SHOTS, SHOT_PREFIX + name), Buffer.from(r.data, "base64"));
   };
 
   await wait(`document.querySelector('#authForm')`, "login");
@@ -105,6 +116,8 @@ async function main() {
     throw e;
   }
   await sleep(900);
+  await click(`[data-view="chat"]`);
+  await sleep(500);
   await shot("v2-app-plan.png");
 
   await click(`[data-view="memory"]`);
