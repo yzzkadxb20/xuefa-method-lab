@@ -1,5 +1,5 @@
 [build]
-  command = "npm install"
+  command = "npm install --omit=dev --omit=optional --legacy-peer-deps"
   publish = "public"
   functions = "netlify/functions"
 
