@@ -7,7 +7,12 @@ import pg from "pg";
 import methodSeed from "./method-seed.mjs";
 
 const { Pool } = pg;
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+let __dirname;
+try {
+  __dirname = path.dirname(fileURLToPath(import.meta.url));
+} catch {
+  __dirname = process.env.LAMBDA_TASK_ROOT || process.cwd();
+}
 const PUBLIC_DIR = path.join(__dirname, "public");
 
 function loadEnv() {
@@ -618,9 +623,15 @@ export async function init() {
 }
 
 if (!IS_SERVERLESS) {
-  await init();
-  server.listen(PORT, HOST, () => {
-    console.log(`学法实验室 v2 (Postgres) running at http://localhost:${PORT}`);
-    console.log(`admin login: ${ADMIN_USERNAME}${IS_PROD ? " (password from env)" : ` / ${ADMIN_PASSWORD}`}`);
-  });
+  init()
+    .then(() => {
+      server.listen(PORT, HOST, () => {
+        console.log(`学法实验室 v2 (Postgres) running at http://localhost:${PORT}`);
+        console.log(`admin login: ${ADMIN_USERNAME}${IS_PROD ? " (password from env)" : ` / ${ADMIN_PASSWORD}`}`);
+      });
+    })
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
 }
