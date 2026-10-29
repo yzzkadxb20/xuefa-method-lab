@@ -29,6 +29,7 @@ const HOST = process.env.HOST || "0.0.0.0";
 const SESSION_DAYS = Number(process.env.SESSION_DAYS || 7);
 const SESSION_MS = SESSION_DAYS * 24 * 60 * 60 * 1000;
 const IS_PROD = process.env.NODE_ENV === "production";
+const IS_SERVERLESS = process.env.NETLIFY === "true" || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME) || Boolean(process.env.LAMBDA_TASK_ROOT);
 const DATABASE_URL = process.env.DATABASE_URL || "";
 const USE_SSL = process.env.PGSSL === "1";
 
@@ -36,11 +37,15 @@ if (!DATABASE_URL) {
   console.error("DATABASE_URL is required for server-pg.mjs");
   process.exit(1);
 }
+if (IS_PROD && !process.env.ADMIN_PASSWORD) {
+  console.error("ADMIN_PASSWORD is required in production");
+  process.exit(1);
+}
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
   ssl: USE_SSL ? { rejectUnauthorized: false } : undefined,
-  max: process.env.NETLIFY === "true" ? 1 : 5,
+  max: IS_SERVERLESS ? 1 : 5,
   idleTimeoutMillis: 30000,
 });
 
@@ -612,7 +617,7 @@ export async function init() {
   await initDb();
 }
 
-if (process.env.NETLIFY !== "true") {
+if (!IS_SERVERLESS) {
   await init();
   server.listen(PORT, HOST, () => {
     console.log(`学法实验室 v2 (Postgres) running at http://localhost:${PORT}`);
