@@ -4,7 +4,7 @@ import path from "node:path";
 
 const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
 const PORT = 9341;
-const BASE = "http://127.0.0.1:4180";
+const BASE = process.env.CAPTURE_BASE || "http://127.0.0.1:4180";
 const PROFILE = path.join(process.cwd(), `.edge-capture-${Date.now()}`);
 const SHOTS = path.resolve(process.cwd(), "..", "screenshots");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -56,7 +56,7 @@ async function main() {
     await sleep(250);
     try {
       const j = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
-      target = j.find((x) => x.type === "page" && x.url.includes("127.0.0.1:4180"));
+      target = j.find((x) => x.type === "page" && x.url.includes(new URL(BASE).host));
     } catch {}
   }
   if (!target) throw new Error("no target");
@@ -88,13 +88,22 @@ async function main() {
   };
 
   await wait(`document.querySelector('#authForm')`, "login");
+  await sleep(900);
   await shot("v2-login-clean.png");
 
   // demo user
   await fill("#username", "demo");
   await fill("#password", "demo12345");
   await click("#authForm .auth-submit");
-  await wait(`document.querySelector('.plan-card')`, "demo plan");
+  try {
+    await wait(`document.querySelector('.plan-card')`, "demo plan");
+  } catch (e) {
+    console.log("DEBUG_URL", await val("location.href"));
+    console.log("DEBUG_TEXT", String(await val("document.body.innerText")).slice(0, 1200));
+    console.log("DEBUG_ERRORS", JSON.stringify(errors));
+    await shot("v2-public-debug.png");
+    throw e;
+  }
   await sleep(900);
   await shot("v2-app-plan.png");
 
@@ -107,6 +116,12 @@ async function main() {
   await wait(`document.querySelector('.chart')`, "report");
   await sleep(700);
   await shot("v2-app-report.png");
+
+  if (process.env.SKIP_ADMIN === "1") {
+    console.log(JSON.stringify({ ok: true, public: true, errors }, null, 2));
+    cdp.ws.close();
+    return;
+  }
 
   // logout -> admin
   await click(`[data-action="logout"]`);

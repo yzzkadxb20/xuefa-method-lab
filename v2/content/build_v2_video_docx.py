@@ -102,7 +102,7 @@ rf(p.add_run("登录一次，让教练记住你。"), 11, False, MUTED)
 meta = [
     ("目标时长", "5:50–5:58（硬上限 6:00）"),
     ("规格", "1920×1080，16:9，MP4 / H.264，≤300MB"),
-    ("演示账号", "用户 demo / demo12345；管理员 admin / admin12345（本地）"),
+    ("演示账号", "用户 demo / demo12345；管理员 admin + 线上强密码（录屏时用你自己的）"),
 ]
 t = doc.add_table(rows=len(meta), cols=2)
 t.autofit = False
@@ -119,9 +119,9 @@ doc.add_paragraph()
 
 h("一、录制前准备")
 for x in [
-    "启动 v2：cd method-lab-pro && npm start；打开 http://localhost:4180/login.html。",
+    "打开 https://method-lab-v2.netlify.app/login.html；现场网络不稳时可改录本地（npm start → localhost:4180）。",
     "浏览器缩放 100%，隐藏书签栏；窗口 1440×900 或 1920×1080。",
-    "先用 demo / demo12345 登录，确认第 7 天任务卡与记忆；另开无痕窗口验证 admin 后台。",
+    "先用 demo / demo12345 登录，确认第 7 天任务卡与记忆；另开无痕窗口用 admin + 线上强密码验证后台。",
     "录屏 OBS / Xbox Game Bar；麦克风先试录 10 秒；BGM ≤ -28dB。",
     "全程建议上中文字幕；画面内不要出现学校、姓名、真实密码。",
 ]:

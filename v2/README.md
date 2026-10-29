@@ -2,7 +2,10 @@
 
 > 登录一次，让教练记住你。
 
-v2 从纯前端 Demo 升级为 **Node + SQLite 全栈应用**：
+**公网：** <https://method-lab-v2.netlify.app/login.html>  
+**健康检查：** <https://method-lab-v2.netlify.app/api/health>
+
+v2 从纯前端 Demo 升级为全栈应用：本地 Node + SQLite；线上 Netlify Functions + Neon Postgres。
 
 - 用户注册 / 登录 / 退出
 - 学习状态保存在服务端，换设备登录仍能继续
@@ -17,11 +20,18 @@ v2 从纯前端 Demo 升级为 **Node + SQLite 全栈应用**：
 
 ## 1. 运行
 
-要求：Node.js ≥ 22.5（使用内置 `node:sqlite`，无需安装依赖）。
+本地要求：Node.js ≥ 22.5（使用内置 `node:sqlite`）。
 
 ```bash
 cd method-lab-pro
 npm start
+```
+
+线上 Postgres 版：
+
+```bash
+npm install
+DATABASE_URL='postgresql://...' PGSSL=1 node server-pg.mjs
 ```
 
 打开 <http://localhost:4180/login.html>。

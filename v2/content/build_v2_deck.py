@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Build 学法实验室 v2 competition deck (20 slides)."""
+import os
 from pathlib import Path
 from PIL import Image
 from pptx import Presentation
@@ -14,6 +15,7 @@ ROOT = Path(r"D:\deepseek-harness\default-workspace")
 DECK_DIR = ROOT / "deliverables-v2"
 ASSETS = ROOT / "method-lab-pro" / "content" / "assets"
 DECK_DIR.mkdir(parents=True, exist_ok=True)
+PUBLIC_URL = os.environ.get("PUBLIC_URL", "https://method-lab-v2.netlify.app")
 
 INK = RGBColor(0x10, 0x23, 0x1E)
 INK2 = RGBColor(0x18, 0x34, 0x2C)
@@ -948,7 +950,7 @@ def s19():
     bg(s, PAPER)
     kicker(s, "18 / VALIDATION & NEXT")
     title(s, "不是“做完了”，是“跑通了”。", size=31)
-    subtitle(s, "v2 已在本地完成用户/管理员双角色端到端验收，下一步是持久化部署与小样本测试。")
+    subtitle(s, "v2 已在 Netlify + Neon 完成部署与用户/管理员双角色端到端验收；下一步是小样本测试。")
 
     checks = [
         ("注册 / 登录 / 退出", "会话写入、退出失效", MINT),
@@ -971,9 +973,9 @@ def s19():
 
     rect(s, 0.72, 5.70, 5.72, 0.62, fill=INK, line=None, radius=0.10)
     tx(s, "演示账号：demo / demo12345 · 管理员见提交说明", 0.94, 5.86, 5.2, 0.22, size=7.5, color=MINT, bold=True)
-    tx(s, "测试环境：本地 Node 24 + SQLite ｜ 公网入口：部署后填入", 6.85, 5.86, 5.2, 0.22, size=7.6, color=CORAL_DARK, bold=True)
+    tx(s, f"Netlify + Neon ｜ {PUBLIC_URL}", 6.85, 5.86, 5.6, 0.22, size=7.4, color=CORAL_DARK, bold=True)
 
-    tx(s, "下一步：部署持久化数据库 → 30 人可用性测试 → 教师/教练工作台", 0.72, 6.58, 11.8, 0.24, size=8.5, color=CORAL_DARK, bold=True)
+    tx(s, "下一步：30 人可用性测试 → 教师/教练工作台 → 方法创作者生态", 0.72, 6.58, 11.8, 0.24, size=8.5, color=CORAL_DARK, bold=True)
     footer(s, 19)
     s.notes_slide.notes_text_frame.text = "验证页讲清不是 PPT 做完了，而是端到端跑通了：注册、三问、刷新、重登、建议、管理员处理、方法编辑。下一步是部署和测试。"
 
