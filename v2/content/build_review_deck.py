@@ -252,27 +252,35 @@ def p9_mindmap():
     s = d.sld()
     d.bg(s, d.CREAM)
     d.kicker(s, "07 / ANALYSIS FLOW")
-    d.title(s, "分析不是描述，是把行为写成 agent 的决策链。", size=27)
-    d.subtitle(s, "从输入到记忆，每一环都对应一个可实现的状态与规则。")
-    nodes = [
-        ("输入", "3 问 + 打卡", d.MINT_SOFT),
-        ("诊断", "目标 / 起点 / 约束", d.GOLD_SOFT),
-        ("匹配", "4 层评分", d.BLUE_SOFT),
-        ("试验", "3 天微试验", d.CORAL_SOFT),
-        ("反馈", "完成 / 难度 / 自测", d.MINT_SOFT),
-        ("决策", "保留 / 换法", d.GOLD_SOFT),
+    d.title(s, "一张思维导图：学习行为如何变成 agent 决策。", size=27)
+    d.subtitle(s, "中心是行为数据，四条分支是诊断、匹配、试验、反馈；每条分支都能落到代码。")
+
+    center = (4.86, 2.92, 3.60, 1.02)
+    d.rect(s, center[0], center[1], center[2], center[3], fill=d.INK, line=None, radius=0.12)
+    d.tx(s, "学习行为数据", 5.02, 3.06, 3.2, 0.28, size=14, color=d.CREAM, bold=True)
+    d.tx(s, "目标 / 完成 / 自测 / 卡点", 5.02, 3.42, 3.2, 0.22, size=7.4, color=d.MINT)
+
+    branches = [
+        ("诊断", "目标清晰度 / 起点 / 约束", 0.72, 2.12, d.MINT_SOFT, d.MINT_DARK),
+        ("匹配", "4 层评分 / 证据 / 时间", 9.58, 2.12, d.GOLD_SOFT, RGBColor(0x7A, 0x5A, 0x10)),
+        ("试验", "3 天微试验 / 失败模式", 0.72, 4.36, d.CORAL_SOFT, d.CORAL_DARK),
+        ("反馈 → 决策", "完成率 / 自测 / 换法", 9.58, 4.36, d.BLUE_SOFT, RGBColor(0x2E, 0x6F, 0x9E)),
     ]
-    for i, (h, sub, tint) in enumerate(nodes):
-        x = 0.72 + i * 2.05
-        d.rect(s, x, 2.28, 1.82, 0.86, fill=tint, line=None, radius=0.10)
-        d.tx(s, h, x + 0.12, 2.40, 1.55, 0.24, size=10.5, color=d.INK, bold=True)
-        d.tx(s, sub, x + 0.12, 2.72, 1.55, 0.2, size=7.2, color=d.MUTED)
-        if i < len(nodes) - 1:
-            d.arrow(s, x + 1.84, 2.62, 0.16, 0.14, color=d.CORAL)
-    d.line(s, 11.62, 3.20, 11.62, 3.72, color=d.CORAL, width=1.2)
-    d.line(s, 1.62, 3.72, 11.62, 3.72, color=d.CORAL, width=1.2)
-    d.line(s, 1.62, 3.72, 1.62, 3.20, color=d.CORAL, width=1.2)
-    d.tx(s, "每次反馈写回 user_state，下一次诊断直接读历史", 3.45, 3.80, 7.4, 0.24, size=8.4, color=d.CORAL_DARK, bold=True)
+    for head, sub, x, y, tint, fg in branches:
+        d.rect(s, x, y, 2.90, 0.82, fill=tint, line=None, radius=0.10)
+        d.tx(s, head, x + 0.16, y + 0.11, 2.5, 0.24, size=10.5, color=fg, bold=True)
+        d.tx(s, sub, x + 0.16, y + 0.46, 2.6, 0.22, size=7.0, color=d.INK2)
+
+    # connector lines from center to branches
+    for x1, y1, x2, y2 in [
+        (4.86, 3.22, 3.62, 2.53),
+        (8.46, 3.22, 9.58, 2.53),
+        (4.86, 3.68, 3.62, 4.77),
+        (8.46, 3.68, 9.58, 4.77),
+    ]:
+        d.line(s, x1, y1, x2, y2, color=d.CORAL, width=1.4)
+    d.tx(s, "每次反馈写回 user_state，下一次诊断直接读历史", 4.05, 4.04, 6.2, 0.22, size=7.4, color=d.CORAL_DARK, bold=True)
+
     rules = [
         ("完成率 < 60", "先降门槛：拆任务、缩时长；不要急着换法。", d.GOLD_SOFT, RGBColor(0x7A, 0x5A, 0x10)),
         ("完成率高 + 自测 < 60", "方法不匹配：换一个反馈更快的方法。", d.CORAL_SOFT, d.CORAL_DARK),
@@ -280,12 +288,12 @@ def p9_mindmap():
     ]
     for i, (h, body, tint, fg) in enumerate(rules):
         x = 0.72 + i * 4.02
-        d.rect(s, x, 4.72, 3.78, 1.05, fill=tint, line=None, radius=0.10)
-        d.tx(s, h, x + 0.18, 4.88, 3.2, 0.24, size=8.8, color=fg, bold=True)
-        d.tx(s, body, x + 0.18, 5.18, 3.35, 0.42, size=7.4, color=d.INK2, line=1.4)
-    d.tx(s, "分析结论必须能落成 if / else，而不是停在“建议多练习”。", 0.72, 6.22, 11.8, 0.26, size=9.5, color=d.MUTED, bold=True)
+        d.rect(s, x, 5.58, 3.78, 0.88, fill=tint, line=None, radius=0.10)
+        d.tx(s, h, x + 0.18, 5.71, 3.2, 0.22, size=8.8, color=fg, bold=True)
+        d.tx(s, body, x + 0.18, 5.99, 3.35, 0.34, size=7.2, color=d.INK2, line=1.35)
+    d.tx(s, "分析结论必须能落成 if / else，而不是停在“建议多练习”。", 0.72, 6.66, 11.8, 0.24, size=9.2, color=d.MUTED, bold=True)
     d.footer(s, 9)
-    s.notes_slide.notes_text_frame.text = "分析流程：输入、诊断、匹配、试验、反馈、决策，再写回记忆。下面三条规则是从数据直接推出的 agent 决策。"
+    s.notes_slide.notes_text_frame.text = "思维导图：中心是学习行为数据，四条分支是诊断、匹配、试验、反馈决策；每次反馈写回 user_state。底部三条规则直接对应代码。"
 
 
 def p11_rules():
