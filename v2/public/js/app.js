@@ -1418,7 +1418,7 @@ function renderReport() {
 
   box.innerHTML = `
     <div class="report-top">
-      <div><div class="kicker">LEARNING REPORT</div><h2>用反馈，而不是感觉，判断效果</h2><p>${state.demo ? "演示档案 · 以下为原型内置模拟数据" : "数据来自你的本地反馈，不上传服务器"}</p></div>
+      <div><div class="kicker">LEARNING REPORT</div><h2>用反馈，而不是感觉，判断效果</h2><p>${state.demo ? "演示档案 · 以下为原型内置模拟数据" : "数据来自你的账号记忆，仅你可见"}</p></div>
       <div class="memory-actions"><button class="btn ghost" data-action="view" data-view="memory">看记忆 →</button></div>
     </div>
     <div class="stat-grid">
