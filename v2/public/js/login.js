@@ -78,6 +78,7 @@ $("#fillUser").addEventListener("click", () => {
   $("#authError").textContent = "已填入用户演示账号，点击登录即可。";
 });
 $("#authForm").addEventListener("submit", submit);
+document.documentElement.dataset.authReady = "1";
 
 // already logged in? go to app/admin
 api("/api/me", { noRedirect: true })

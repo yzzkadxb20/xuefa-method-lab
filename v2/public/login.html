@@ -54,7 +54,7 @@
           <button type="button" class="auth-tab" data-tab="register" role="tab" aria-selected="false">注册</button>
         </div>
 
-        <form id="authForm" autocomplete="on">
+        <form id="authForm" method="post" action="/login.html" autocomplete="on" onsubmit="return false;">
           <label class="auth-field">
             <span>用户名</span>
             <input id="username" name="username" type="text" autocomplete="username" placeholder="3-24 位，中英文/数字/下划线" maxlength="24" required />

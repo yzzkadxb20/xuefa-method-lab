@@ -99,7 +99,8 @@ async function main() {
   };
 
   await wait(`document.querySelector('#authForm')`, "login");
-  await sleep(900);
+  await wait(`document.documentElement.dataset.authReady === "1"`, "auth module");
+  await sleep(300);
   await shot("v2-login-clean.png");
 
   // demo user
