@@ -56,6 +56,10 @@ async function submit(e) {
     const data = mode === "login"
       ? await api("/api/auth/login", { method: "POST", body: { username, password }, noRedirect: true })
       : await api("/api/auth/register", { method: "POST", body: { username, password }, noRedirect: true });
+    if (data?.recoveryCode) {
+      showRecoveryCode(data.recoveryCode);
+      return;
+    }
     location.href = data?.user?.role === "admin" ? "/admin.html" : next;
   } catch (err) {
     error.textContent = err.message || "请求失败，请稍后再试。";
@@ -80,6 +84,28 @@ $("#fillUser").addEventListener("click", () => {
   $("#password").value = "demo12345";
   $("#authError").textContent = "已填入用户演示账号，点击登录即可。";
 });
+function showRecoveryCode(code) {
+  const modal = $("#recoveryModal");
+  $("#recoveryCode").textContent = code;
+  $("#recoverySaved").checked = false;
+  $("#recoveryContinue").disabled = true;
+  modal.hidden = false;
+  $("#recoverySaved").onchange = (e) => {
+    $("#recoveryContinue").disabled = !e.target.checked;
+  };
+  $("#copyRecovery").onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      $("#copyRecovery").textContent = "已复制";
+    } catch {
+      $("#copyRecovery").textContent = "请手动选中复制";
+    }
+  };
+  $("#recoveryContinue").onclick = () => {
+    if ($("#recoverySaved").checked) location.href = next;
+  };
+}
+
 $("#authForm").addEventListener("submit", submit);
 document.documentElement.dataset.authReady = "1";
 

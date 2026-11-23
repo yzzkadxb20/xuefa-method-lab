@@ -29,7 +29,7 @@
         <div class="auth-card-head">
           <div class="auth-kicker">ACCOUNT / 找回</div>
           <h2>重置密码</h2>
-          <p>输入用户名、管理员给的重置码，以及新密码。重置后旧登录会全部退出。</p>
+          <p>输入用户名、注册时保存的恢复码（或管理员给的重置码），以及新密码。重置后旧登录会全部退出。</p>
         </div>
 
         <form id="resetForm" autocomplete="off">
@@ -38,8 +38,8 @@
             <input id="username" name="username" type="text" autocomplete="username" placeholder="你的用户名" required />
           </label>
           <label class="auth-field">
-            <span>一次性重置码</span>
-            <input id="resetCode" name="resetCode" type="text" inputmode="text" autocomplete="one-time-code" placeholder="例如 A1B2-C3D4" maxlength="20" required />
+            <span>恢复码 / 管理员重置码</span>
+            <input id="resetCode" name="resetCode" type="text" inputmode="text" autocomplete="one-time-code" placeholder="ML-XXXX-XXXX-XXXX 或 A1B2-C3D4" maxlength="24" required />
           </label>
           <label class="auth-field">
             <span>新密码</span>
@@ -58,7 +58,7 @@
           <a href="login.html">返回登录</a>
         </div>
         <div class="auth-foot auth-foot-muted">
-          <span>没有重置码？联系管理员生成，不要重复尝试。</span>
+          <span>恢复码在注册时只显示一次；找不到再联系管理员生成重置码。</span>
         </div>
       </div>
     </section>

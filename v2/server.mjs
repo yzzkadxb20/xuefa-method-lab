@@ -45,7 +45,9 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'user',
   created_at INTEGER NOT NULL,
-  disabled INTEGER NOT NULL DEFAULT 0
+  disabled INTEGER NOT NULL DEFAULT 0,
+  recovery_code_hash TEXT,
+  recovery_code_created_at INTEGER
 );
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY,
@@ -111,12 +113,23 @@ const stateCols = db.prepare("PRAGMA table_info(user_states)").all();
 if (!stateCols.some((c) => c.name === "revision")) {
   db.exec("ALTER TABLE user_states ADD COLUMN revision INTEGER NOT NULL DEFAULT 0");
 }
+const userCols = db.prepare("PRAGMA table_info(users)").all();
+if (!userCols.some((c) => c.name === "recovery_code_hash")) {
+  db.exec("ALTER TABLE users ADD COLUMN recovery_code_hash TEXT");
+}
+if (!userCols.some((c) => c.name === "recovery_code_created_at")) {
+  db.exec("ALTER TABLE users ADD COLUMN recovery_code_created_at INTEGER");
+}
 
 const now = () => Date.now();
 const uid = () => crypto.randomUUID();
 const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
 const normalizeResetCode = (s) => String(s || "").replace(/[\s-]/g, "").toUpperCase();
 const makeResetCode = () => crypto.randomBytes(4).toString("hex").toUpperCase().replace(/(.{4})/, "$1-");
+const makeRecoveryCode = () => {
+  const h = crypto.randomBytes(6).toString("hex").toUpperCase();
+  return `ML-${h.slice(0, 4)}-${h.slice(4, 8)}-${h.slice(8, 12)}`;
+};
 const AUTH_WINDOW_MS = 15 * 60 * 1000;
 const AUTH_MAX_ATTEMPTS = 8;
 const authAttempts = new Map();
@@ -417,15 +430,13 @@ async function handleApi(req, res, url) {
       return true;
     }
     const id = uid();
-    db.prepare("INSERT INTO users (id, username, password_hash, role, created_at) VALUES (?, ?, ?, 'user', ?)").run(
-      id,
-      username,
-      hashPassword(password),
-      now()
-    );
+    const recoveryCode = makeRecoveryCode();
+    db.prepare(
+      "INSERT INTO users (id, username, password_hash, role, created_at, recovery_code_hash, recovery_code_created_at) VALUES (?, ?, ?, 'user', ?, ?, ?)"
+    ).run(id, username, hashPassword(password), now(), sha256(normalizeResetCode(recoveryCode)), now());
     createSession(res, id);
     clearRate(registerKey);
-    sendJson(res, 201, { user: { id, username, role: "user" } });
+    sendJson(res, 201, { user: { id, username, role: "user" }, recoveryCode });
     return true;
   }
 
@@ -469,19 +480,22 @@ async function handleApi(req, res, url) {
       sendJson(res, 429, { error: "尝试次数过多，请稍后再试" }, { "Retry-After": String(limit.retryAfter) });
       return true;
     }
-    const row = db.prepare("SELECT id, disabled FROM users WHERE lower(username) = lower(?)").get(username);
+    const row = db.prepare("SELECT id, disabled, recovery_code_hash FROM users WHERE lower(username) = lower(?)").get(username);
     const reset = row
       ? db.prepare("SELECT id, code_hash, expires_at FROM password_resets WHERE user_id = ? AND used_at IS NULL ORDER BY created_at DESC LIMIT 1").get(row.id)
       : null;
-    if (!row || row.disabled || !reset || Number(reset.expires_at) < now() || sha256(code) !== reset.code_hash) {
-      sendJson(res, 400, { error: "重置码无效或已过期，请让管理员重新生成" });
+    const codeHash = sha256(code);
+    const adminValid = Boolean(reset) && Number(reset.expires_at) >= now() && codeHash === reset.code_hash;
+    const recoveryValid = Boolean(row?.recovery_code_hash) && codeHash === row.recovery_code_hash;
+    if (!row || row.disabled || (!adminValid && !recoveryValid)) {
+      sendJson(res, 400, { error: "重置码无效或已过期，请检查恢复码，或让管理员重新生成" });
       return true;
     }
     db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hashPassword(password), row.id);
-    db.prepare("UPDATE password_resets SET used_at = ? WHERE id = ?").run(now(), reset.id);
+    if (adminValid) db.prepare("UPDATE password_resets SET used_at = ? WHERE id = ?").run(now(), reset.id);
     db.prepare("DELETE FROM sessions WHERE user_id = ?").run(row.id);
     clearRate(key);
-    sendJson(res, 200, { ok: true });
+    sendJson(res, 200, { ok: true, usedRecovery: recoveryValid && !adminValid });
     return true;
   }
 
@@ -516,6 +530,23 @@ async function handleApi(req, res, url) {
     db.prepare("DELETE FROM users WHERE id = ?").run(user.id);
     clearSessionCookie(res);
     sendJson(res, 200, { ok: true });
+    return true;
+  }
+
+  if (p === "/api/account/recovery-code" && req.method === "POST") {
+    const user = requireUser(req, res);
+    if (!user) return true;
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const u = db.prepare("SELECT password_hash FROM users WHERE id = ?").get(user.id);
+    if (!u || !verifyPassword(String(body.password || ""), u.password_hash)) {
+      sendJson(res, 403, { error: "密码不正确，未生成恢复码" });
+      return true;
+    }
+    const code = makeRecoveryCode();
+    db.prepare("UPDATE users SET recovery_code_hash = ?, recovery_code_created_at = ? WHERE id = ?").run(
+      sha256(normalizeResetCode(code)), now(), user.id
+    );
+    sendJson(res, 200, { code });
     return true;
   }
 

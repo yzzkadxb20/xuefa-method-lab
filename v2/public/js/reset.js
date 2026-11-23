@@ -31,7 +31,7 @@ $("#resetForm").addEventListener("submit", async (e) => {
     btn.textContent = "已重置，去登录";
     setTimeout(() => { location.href = "/login.html"; }, 700);
   } catch (err) {
-    error.textContent = err.message || "重置失败，请让管理员重新生成重置码。";
+    error.textContent = err.message || "重置失败，请检查恢复码，或让管理员重新生成重置码。";
     btn.disabled = false;
     btn.textContent = "重置密码";
   }

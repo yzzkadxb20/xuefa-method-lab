@@ -92,6 +92,18 @@
       </div>
     </section>
   </div>
+  <div class="recovery-overlay" id="recoveryModal" hidden>
+    <div class="recovery-card" role="dialog" aria-modal="true" aria-label="保存恢复码">
+      <div class="recovery-kicker">RECOVERY CODE · 只显示一次</div>
+      <h2>先把恢复码存下来</h2>
+      <p>忘记密码时，不用找管理员，凭这串码就能重置。它只显示这一次。</p>
+      <div class="recovery-code" id="recoveryCode">ML-XXXX-XXXX-XXXX</div>
+      <button type="button" class="recovery-copy" id="copyRecovery">复制恢复码</button>
+      <label class="recovery-check"><input type="checkbox" id="recoverySaved" /> 我已保存到安全的地方</label>
+      <button type="button" class="auth-submit" id="recoveryContinue" disabled>继续进入</button>
+      <p class="recovery-note">如果丢了，登录后可在「账号设置」重新生成；管理员重置码仍可作为兜底。</p>
+    </div>
+  </div>
   <script type="module" src="js/login.js"></script>
 </body>
 </html>

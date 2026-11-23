@@ -1523,6 +1523,11 @@ function openAccountSettings() {
           <div class="plan-metric"><strong>删除账号前请确认：</strong>这不是“清空记忆”，而是删除账号和全部学习数据。演示账号不能删除。</div>
           <label class="detail-label" style="display:block;margin-top:14px">输入当前密码确认</label>
           <input class="admin-input" id="deleteAccountPassword" type="password" autocomplete="current-password" placeholder="当前密码" style="width:100%;margin-top:6px" />
+          <div class="plan-metric" style="margin-top:14px"><strong>恢复码：</strong>忘记密码时用；重新生成后旧恢复码立即失效。输入当前密码后可生成。</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input class="admin-input" id="recoveryPassword" type="password" autocomplete="current-password" placeholder="当前密码" style="flex:1" />
+            <button class="btn ghost" data-action="generate-recovery-code">重新生成</button>
+          </div>
         </div>
         <div class="modal-foot">
           <button class="btn ghost" data-action="close-modal">取消</button>
@@ -1530,6 +1535,33 @@ function openAccountSettings() {
         </div>
       </div>
     </div>`);
+}
+
+async function generateRecoveryCode() {
+  const password = $("#recoveryPassword")?.value || "";
+  if (!password) {
+    toast("请输入当前密码。");
+    return;
+  }
+  try {
+    const data = await api("/api/account/recovery-code", { method: "POST", body: { password } });
+    showModal(`
+      <div class="modal-backdrop">
+        <div class="modal narrow" role="dialog" aria-modal="true" aria-label="新的恢复码">
+          <div class="modal-head"><div><h3>新的恢复码</h3><p>只显示这一次。请保存到安全的地方。</p></div><button class="modal-close" data-action="close-modal">✕</button></div>
+          <div class="modal-body">
+            <div class="recovery-code">${esc(data.code)}</div>
+            <div class="plan-metric" style="margin-top:12px">旧恢复码已经失效。以后忘记密码，在重置页输入这串码即可。</div>
+          </div>
+          <div class="modal-foot">
+            <button class="btn ghost" data-action="copy-recovery-code" data-code="${escAttr(data.code)}">复制</button>
+            <button class="btn primary" data-action="close-modal">我已保存</button>
+          </div>
+        </div>
+      </div>`);
+  } catch (err) {
+    toast(err.message || "生成失败");
+  }
 }
 
 async function deleteAccount() {
@@ -2029,6 +2061,14 @@ function bindEvents() {
     }
     if (action === "confirm-delete-account") {
       deleteAccount();
+      return;
+    }
+    if (action === "generate-recovery-code") {
+      generateRecoveryCode();
+      return;
+    }
+    if (action === "copy-recovery-code") {
+      navigator.clipboard?.writeText(el.dataset.code || "").then(() => toast("已复制恢复码")).catch(() => toast("请手动选中复制"));
       return;
     }
     if (action === "resolve-domain") {
