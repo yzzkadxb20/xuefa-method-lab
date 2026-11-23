@@ -325,6 +325,7 @@ a { color: inherit; }
 .plan-metric { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #f7f3e9; font-size: 11px; line-height: 1.6; color: #5d5749; }
 .baseline-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-top: 12px; padding: 11px 13px; border: 1px solid #cdebd8; border-radius: 10px; background: #f1fbf5; font-size: 11px; line-height: 1.6; color: #2b6a4b; }
 .baseline-summary span { color: #5d6f64; }
+.baseline-summary .chip { margin-left: auto; }
 .baseline-summary.muted { border-color: var(--line); background: #f7f3e9; color: #6b6253; }
 .plan-metric strong { color: var(--ink); }
 

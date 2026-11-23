@@ -726,6 +726,7 @@ function startPlanGeneration() {
 
 function openBaseline() {
   const questions = E.BASELINE_QUESTIONS || [];
+  const hasPlan = Boolean(state.plan);
   showModal(`
     <div class="modal-backdrop">
       <div class="modal baseline-modal" role="dialog" aria-modal="true" aria-label="60 秒学习行为基线">
@@ -748,7 +749,9 @@ function openBaseline() {
               </div>`).join("")}
           </div>
           <div class="modal-foot">
-            <button type="button" class="btn ghost" data-action="skip-baseline">先跳过，用自评</button>
+            ${hasPlan
+              ? `<button type="button" class="btn ghost" data-action="close-modal">取消</button>`
+              : `<button type="button" class="btn ghost" data-action="skip-baseline">先跳过，用自评</button>`}
             <button type="submit" class="btn primary">提交基线 →</button>
           </div>
         </form>
@@ -773,13 +776,26 @@ function submitBaseline(e) {
   }
   const max = questions.reduce((sum, q) => sum + Math.max(...q.options.map((o) => o.score)), 0);
   const score = Math.round((total / max) * 100);
+  const hadPlan = Boolean(state.plan);
   state.baseline = { score, answers, date: new Date().toISOString(), label: E.BASELINE_META.title };
   closeModal();
-  addMessage("agent", "text", `基线完成：**${score}/100**。${score < 60 ? "你现在的学习习惯偏“输入型”，先别加时长，先把输出补上。" : "你已经有基本的输出习惯，接下来重点是把方法匹配到具体卡点。"}\n\n现在生成方案。`);
+  addMessage("agent", "text", hadPlan
+    ? `基线补测完成：**${score}/100**。当前任务卡和学习记录不变，报告里现在可以做前后对照了。`
+    : `基线完成：**${score}/100**。${score < 60 ? "你现在的学习习惯偏“输入型”，先别加时长，先把输出补上。" : "你已经有基本的输出习惯，接下来重点是把方法匹配到具体卡点。"}\n\n现在生成方案。`);
+  if (hadPlan) {
+    persist();
+    renderAll();
+    toast("基线已补测，任务卡没有变。");
+    return;
+  }
   startPlanGeneration();
 }
 
 function skipBaseline() {
+  if (state.plan) {
+    closeModal();
+    return;
+  }
   state.baseline = { skipped: true, date: new Date().toISOString(), label: E.BASELINE_META.title };
   closeModal();
   addMessage("agent", "text", "已跳过基线。方案会照常生成，但报告里会标“基线未测”，效果只能靠自评判断。");
@@ -1605,7 +1621,7 @@ function renderReport() {
     <div class="baseline-summary ${state.baseline && !state.baseline.skipped ? "" : "muted"}">
       ${state.baseline && !state.baseline.skipped
         ? `<strong>Day 1 学习行为基线：${state.baseline.score}/100</strong><span>当前平均效果：${avgEffect} 分。基线测“怎么学”，效果分测“今天有没有产出”，两个指标不混用。</span>`
-        : `<strong>基线未测</strong><span>现在只能看自评和完成率；建议下次补一次 60 秒基线，才能做前后对照。</span>`}
+        : `<strong>基线未测</strong><span>现在只能看自评和完成率；建议补一次 60 秒基线，才能做前后对照。</span><button class="chip" data-action="open-baseline">补测基线</button>`}
     </div>
     <div class="report-grid">
       <div class="panel">
@@ -1899,6 +1915,10 @@ function bindEvents() {
     }
     if (action === "skip-baseline") {
       skipBaseline();
+      return;
+    }
+    if (action === "open-baseline") {
+      openBaseline();
       return;
     }
     if (action === "open-method") {
