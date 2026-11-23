@@ -1,5 +1,5 @@
 [build]
-  command = "npm install --omit=dev --omit=optional --legacy-peer-deps"
+  command = "node --test tests/*.test.mjs && npm install --omit=dev --omit=optional --legacy-peer-deps"
   publish = "public"
   functions = "netlify/functions"
 
