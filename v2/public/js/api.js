@@ -25,7 +25,11 @@ export async function api(path, { method = "GET", body, noRedirect = false, keep
     location.href = `/login.html?next=${next}`;
     throw new ApiError("登录已过期", 401);
   }
-  if (!res.ok) throw new ApiError(data?.error || `请求失败 (${res.status})`, res.status);
+  if (!res.ok) {
+    const err = new ApiError(data?.error || `请求失败 (${res.status})`, res.status);
+    err.data = data;
+    throw err;
+  }
   return data;
 }
 

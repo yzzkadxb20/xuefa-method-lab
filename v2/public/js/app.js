@@ -45,6 +45,7 @@ let busy = false;
 let CURRENT_USER = null;
 let saveTimer = null;
 let stateDirty = false;
+let stateRevision = 0;
 let serverSaveWarned = false;
 
 function defaultState() {
@@ -52,6 +53,7 @@ function defaultState() {
     version: 3,
     createdAt: new Date().toISOString(),
     gate: { step: 0, answers: [], complete: false },
+    baseline: null,
     profile: null,
     diagnosis: null,
     match: [],
@@ -100,9 +102,19 @@ async function saveServerState({ force = false, keepalive = false } = {}) {
   if (!force && !stateDirty) return;
   stateDirty = false;
   try {
-    await api("/api/state", { method: "PUT", body: { state }, keepalive });
+    const saved = await api("/api/state", { method: "PUT", body: { state, baseRevision: stateRevision }, keepalive });
+    stateRevision = Number(saved.revision ?? stateRevision + 1);
     serverSaveWarned = false;
   } catch (err) {
+    if (err.status === 409 && err.data?.state) {
+      state = { ...defaultState(), ...err.data.state, version: 3 };
+      stateRevision = Number(err.data.revision || 0);
+      stateDirty = false;
+      serverSaveWarned = true;
+      renderAll();
+      toast("另一个页面更新了学习记录，已载入最新版本；请重做刚才的修改。");
+      return;
+    }
     stateDirty = true;
     console.warn("server save failed", err);
     if (!serverSaveWarned) {
@@ -120,10 +132,17 @@ function flushState() {
       method: "PUT",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state }),
+      body: JSON.stringify({ state, baseRevision: stateRevision }),
       keepalive: true,
-    }).then((res) => {
-      if (!res.ok) stateDirty = true;
+    }).then(async (res) => {
+      if (!res.ok) {
+        stateDirty = true;
+        return;
+      }
+      try {
+        const saved = await res.json();
+        stateRevision = Number(saved.revision ?? stateRevision + 1);
+      } catch {}
     }).catch(() => {
       stateDirty = true;
     });
@@ -217,6 +236,7 @@ async function init() {
   try {
     const saved = await api("/api/state");
     serverState = saved.state;
+    stateRevision = Number(saved.revision || 0);
   } catch (err) {
     console.warn("state load failed", err);
   }
@@ -458,12 +478,17 @@ function renderPlanCard(data) {
     <div class="coach-card plan-card">
       <div class="card-head">
         <div class="card-kicker"><span class="ico">03</span> 今日任务卡</div>
-        <span class="tag gold">第 ${day} 天</span>
+        <span class="tag ${plan.compact ? "mint" : "gold"}">${plan.compact ? "10 分钟最小版" : `第 ${day} 天`}</span>
       </div>
       <div class="card-body">
         <div class="plan-top">
           <div><div class="plan-title">今天只做这 ${plan.tasks.length} 件事</div><div class="plan-sub">${esc(method.name)} · ${esc(method.category)}</div></div>
           <div class="plan-time">${plan.totalMinutes}<span>min</span></div>
+        </div>
+        <div class="plan-actions">
+          ${plan.compact
+            ? `<button class="chip" data-action="restore-plan">恢复完整卡</button>`
+            : `<button class="chip" data-action="shorten-plan">今天只有 10 分钟</button>`}
         </div>
         <div class="task-list">
           ${plan.tasks.map((t) => `
@@ -472,6 +497,7 @@ function renderPlanCard(data) {
               <div class="task-body">
                 <div class="task-title">${esc(t.title)}</div>
                 <div class="task-desc">${esc(t.desc)}</div>
+                <div class="task-why">为什么是这一步：${esc(t.reason || "先拿到一个可检查的产出。")}</div>
                 <div class="task-meta"><span>产出：<span class="out">${esc(t.output)}</span></span><span>·</span><span>可检查</span></div>
               </div>
               <div class="task-min">${t.minutes}′</div>
@@ -678,8 +704,16 @@ function handleGate(text) {
   }
 
   state.gate.complete = true;
-  addMessage("agent", "text", "三问完成 ✅ 现在我做三件事：判断学情 → 匹配方法 → 生成今天能执行的任务卡。\n\n先说明：**方案不是终局，是一个 3 天微试验。**");
+  addMessage("agent", "text", "三问完成 ✅ 还差最后一步：**60 秒学习行为基线**。\n\n5 道题，不考学科知识，只看你平时怎么学。答完我才生成方案；不想答也可以跳过，但报告会标“未测”。");
   renderAll();
+  setTimeout(() => {
+    if (!state.baseline) openBaseline();
+    else startPlanGeneration();
+  }, 450);
+}
+
+function startPlanGeneration() {
+  if (!state.gate.complete || busy) return;
   busy = true;
   showTyping();
   setTimeout(() => {
@@ -690,8 +724,74 @@ function handleGate(text) {
   }, 750);
 }
 
+function openBaseline() {
+  const questions = E.BASELINE_QUESTIONS || [];
+  showModal(`
+    <div class="modal-backdrop">
+      <div class="modal baseline-modal" role="dialog" aria-modal="true" aria-label="60 秒学习行为基线">
+        <div class="modal-head">
+          <div><h3>${esc(E.BASELINE_META.title)}</h3><p>${esc(E.BASELINE_META.intro)}</p></div>
+          <button class="modal-close" data-action="close-modal">✕</button>
+        </div>
+        <form id="baselineForm">
+          <div class="modal-body baseline-body">
+            ${questions.map((q, i) => `
+              <div class="baseline-q">
+                <div class="baseline-q-title">${i + 1}. ${esc(q.q)}</div>
+                <div class="baseline-options">
+                  ${q.options.map((o, j) => `
+                    <label class="baseline-option">
+                      <input type="radio" name="${escAttr(q.id)}" value="${j}">
+                      <span>${esc(o.text)}</span>
+                    </label>`).join("")}
+                </div>
+              </div>`).join("")}
+          </div>
+          <div class="modal-foot">
+            <button type="button" class="btn ghost" data-action="skip-baseline">先跳过，用自评</button>
+            <button type="submit" class="btn primary">提交基线 →</button>
+          </div>
+        </form>
+      </div>
+    </div>`);
+}
+
+function submitBaseline(e) {
+  e.preventDefault();
+  const questions = E.BASELINE_QUESTIONS || [];
+  const answers = {};
+  let total = 0;
+  for (const q of questions) {
+    const picked = document.querySelector(`input[name="${q.id}"]:checked`);
+    if (!picked) {
+      toast("还有题没选，5 道都选一下。");
+      return;
+    }
+    const idx = Number(picked.value);
+    answers[q.id] = idx;
+    total += q.options[idx]?.score || 0;
+  }
+  const max = questions.reduce((sum, q) => sum + Math.max(...q.options.map((o) => o.score)), 0);
+  const score = Math.round((total / max) * 100);
+  state.baseline = { score, answers, date: new Date().toISOString(), label: E.BASELINE_META.title };
+  closeModal();
+  addMessage("agent", "text", `基线完成：**${score}/100**。${score < 60 ? "你现在的学习习惯偏“输入型”，先别加时长，先把输出补上。" : "你已经有基本的输出习惯，接下来重点是把方法匹配到具体卡点。"}\n\n现在生成方案。`);
+  startPlanGeneration();
+}
+
+function skipBaseline() {
+  state.baseline = { skipped: true, date: new Date().toISOString(), label: E.BASELINE_META.title };
+  closeModal();
+  addMessage("agent", "text", "已跳过基线。方案会照常生成，但报告里会标“基线未测”，效果只能靠自评判断。");
+  startPlanGeneration();
+}
+
 function generatePlan() {
   if (!state.gate.complete) return;
+  if (!state.baseline) {
+    openBaseline();
+    return;
+  }
   const profile = E.buildProfile(state.gate.answers, CURRENT_USER?.username || "学习用户");
   const candidates = E.matchMethods(METHODS, profile);
   const method = candidates[0];
@@ -737,6 +837,10 @@ async function sendMessage(text) {
   }
 
   if (!state.plan) {
+    if (!state.baseline) {
+      openBaseline();
+      return;
+    }
     busy = true;
     showTyping();
     await sleep(450);
@@ -848,17 +952,58 @@ async function askLLM(message) {
 }
 
 /* ------------------------------------------------------------------ tasks / feedback */
+function syncPlanSnapshot() {
+  const planMsg = [...state.messages].reverse().find((m) => m.type === "plan" && m.data?.plan);
+  if (planMsg) planMsg.data.plan = state.plan;
+}
+
 function toggleTask(taskId) {
   if (!state.plan) return;
   const task = state.plan.tasks.find((t) => t.id === taskId);
   if (!task) return;
   task.done = !task.done;
-  // 聊天里的任务卡是消息快照；同步最新 plan，否则勾选后界面不会更新
-  const planMsg = [...state.messages].reverse().find((m) => m.type === "plan" && m.data?.plan);
-  if (planMsg) planMsg.data.plan = state.plan;
+  syncPlanSnapshot();
   persist();
   renderAll();
   scrollChat();
+}
+
+function shortenPlan() {
+  if (!state.plan || state.plan.compact) return;
+  const fullTasks = state.plan.tasks;
+  if (!fullTasks.length) return;
+  let remaining = 10;
+  const tasks = [];
+  for (const task of fullTasks) {
+    if (remaining <= 0) break;
+    const take = Math.min(task.minutes || 5, remaining);
+    tasks.push({
+      ...task,
+      minutes: take,
+      title: tasks.length ? `${task.title}（压缩）` : `${task.title}（最小版）`,
+      desc: take < task.minutes ? `只做这一步，限时 ${take} 分钟：${task.desc}` : task.desc,
+      reason: tasks.length
+        ? "如果还有余力，再做这一步；没时间就停在这里。"
+        : "今天只有 10 分钟，先保住一个可验收输出，不追加任务。",
+    });
+    remaining -= take;
+  }
+  const minutes = tasks.reduce((sum, t) => sum + t.minutes, 0);
+  state.plan = { ...state.plan, fullTasks, tasks, totalMinutes: minutes, compact: true };
+  syncPlanSnapshot();
+  persist();
+  renderAll();
+  toast("已缩成 10 分钟最小版；完成后照样可以打卡。");
+}
+
+function restorePlan() {
+  if (!state.plan?.compact || !Array.isArray(state.plan.fullTasks)) return;
+  const { fullTasks, ...rest } = state.plan;
+  state.plan = { ...rest, tasks: fullTasks, totalMinutes: fullTasks.reduce((s, t) => s + t.minutes, 0), compact: false };
+  syncPlanSnapshot();
+  persist();
+  renderAll();
+  toast("已恢复完整任务卡。");
 }
 
 function openFeedback() {
@@ -1381,6 +1526,7 @@ function renderMemory() {
           <div class="panel-title"><h3>学习档案</h3><span>${esc(profile.domain)}</span></div>
           <div class="profile-line"><div class="k">目标</div><div class="v">${esc(profile.goal)}</div></div>
           <div class="profile-line"><div class="k">起点</div><div class="v">${esc(profile.baseline)}</div></div>
+          <div class="profile-line"><div class="k">学习基线</div><div class="v">${state.baseline && !state.baseline.skipped ? `${state.baseline.score}/100 · 60 秒行为基线` : "未测"}</div></div>
           <div class="profile-line"><div class="k">约束</div><div class="v">${esc(profile.constraints)}</div></div>
           <div class="profile-line"><div class="k">节奏</div><div class="v">每天 ${profile.minutes} 分钟 · 截止约 ${profile.deadline} 天</div></div>
           <div class="profile-line"><div class="k">当前方法</div><div class="v">${esc(METHOD_MAP.get(state.methodId)?.name || "—")}</div></div>
@@ -1455,6 +1601,11 @@ function renderReport() {
       <div class="stat-card"><div class="k">累计投入</div><div class="v">${totalMinutes}<small> 分钟</small></div><div class="s">按任务卡估算</div></div>
       <div class="stat-card"><div class="k">平均完成率</div><div class="v">${avgCompletion}<small>%</small></div><div class="s">先看执行，再看效果</div></div>
       <div class="stat-card"><div class="k">平均效果分</div><div class="v">${avgEffect}<small> 分</small></div><div class="s">${avgEffect >= 70 ? "方法整体有效" : "需要继续调试"}</div></div>
+    </div>
+    <div class="baseline-summary ${state.baseline && !state.baseline.skipped ? "" : "muted"}">
+      ${state.baseline && !state.baseline.skipped
+        ? `<strong>Day 1 学习行为基线：${state.baseline.score}/100</strong><span>当前平均效果：${avgEffect} 分。基线测“怎么学”，效果分测“今天有没有产出”，两个指标不混用。</span>`
+        : `<strong>基线未测</strong><span>现在只能看自评和完成率；建议下次补一次 60 秒基线，才能做前后对照。</span>`}
     </div>
     <div class="report-grid">
       <div class="panel">
@@ -1535,6 +1686,7 @@ function buildDemoState(scenarioId, mode = "plan") {
   state = s;
   s.demo = sc;
   s.gate = { step: 3, answers: sc.answers.slice(), complete: true };
+  s.baseline = { score: 58, answers: {}, date: `${logs[0].date}T09:00:00`, label: E.BASELINE_META.title, demo: true };
   s.profile = profile;
   s.logs = logs;
   s.trials = logs.length >= 3 ? [trial1, trial2] : [trial2].filter(Boolean);
@@ -1737,6 +1889,18 @@ function bindEvents() {
       openFeedback();
       return;
     }
+    if (action === "shorten-plan") {
+      shortenPlan();
+      return;
+    }
+    if (action === "restore-plan") {
+      restorePlan();
+      return;
+    }
+    if (action === "skip-baseline") {
+      skipBaseline();
+      return;
+    }
     if (action === "open-method") {
       openMethod(el.dataset.id);
       return;
@@ -1841,6 +2005,9 @@ function bindEvents() {
     if (e.target.id === "suggestionForm") {
       e.preventDefault();
       submitSuggestion();
+    }
+    if (e.target.id === "baselineForm") {
+      submitBaseline(e);
     }
   });
 
