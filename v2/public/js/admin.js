@@ -21,6 +21,9 @@ let filter = "pending";
 let selectedSuggestion = null;
 let methods = [];
 let selectedMethod = null;
+let methodVersions = [];
+let versionMode = false;
+let selectedVersion = null;
 let search = "";
 
 let toastTimer = null;
@@ -39,12 +42,14 @@ function setView(next) {
   const meta = {
     suggestions: ["管理台 / 问题与建议", "把用户的反馈，变成下一次改进。"],
     methods: ["管理台 / 方法库", "方法不是文案，是可执行、可验证的资产。"],
+    metrics: ["管理台 / 指标看板", "先看真实使用，再谈增长。"],
     users: ["管理台 / 用户概况", "只看必要信息，不碰用户密码。"],
   }[next];
   $("#adminCrumb").textContent = meta[0];
   $("#adminTitle").textContent = meta[1];
   if (next === "suggestions") loadSuggestions();
   if (next === "methods") loadMethods();
+  if (next === "metrics") loadMetrics();
   if (next === "users") loadUsers();
 }
 
@@ -60,6 +65,41 @@ async function loadStats() {
   ].map(([k, v, s, color]) => `<div class="admin-stat"><div class="k">${k}</div><div class="v" style="color:${color}">${v}</div><div class="s">${s}</div></div>`).join("");
   $("#pendingBadge").textContent = String(map.pending || 0);
   $("#methodsBadge").textContent = String(data.methods?.published || 0);
+}
+
+async function loadMetrics() {
+  const data = await api("/api/admin/metrics");
+  const u = data.users || {};
+  const l = data.learning || {};
+  const s = data.suggestions || {};
+  const cards = [
+    ["用户总数", u.total ?? 0, "不含管理员", INK],
+    ["7 日活跃", u.active7d ?? 0, "最近同步过状态", MINT],
+    ["有学习记录", u.withLogs ?? 0, "至少一次打卡", GOLD],
+    ["平均完成率", `${l.avgCompletion ?? 0}%`, "执行信号", INK],
+    ["平均效果分", `${l.avgEffect ?? 0}`, "效果信号", CORAL],
+    ["换法率", `${l.switchRate ?? 0}%`, `${l.switched ?? 0}/${l.trials ?? 0} 次试验`, GOLD],
+    ["基线完成", `${l.baselineDone ?? 0}`, `未测 ${l.baselineMissing ?? 0} · 跳过 ${l.baselineSkipped ?? 0}`, MINT],
+    ["待处理建议", s.pending ?? 0, "需要先看", CORAL],
+  ];
+  const maxLogs = Math.max(1, ...(data.days || []).map((d) => d.logs || 0));
+  const bars = (data.days || []).map((d) => `
+    <div class="metric-bar">
+      <div class="metric-bar-value">${d.logs}</div>
+      <div class="metric-bar-track"><span style="height:${Math.round((d.logs / maxLogs) * 100)}%"></span></div>
+      <div class="metric-bar-label">${esc(d.label)}</div>
+    </div>`).join("");
+  $("#metricsContent").innerHTML = `
+    <div class="admin-stats">${cards.map(([k, v, sub, color]) => `<div class="admin-stat"><div class="k">${k}</div><div class="v" style="color:${color}">${v}</div><div class="s">${sub}</div></div>`).join("")}</div>
+    <div class="admin-panel" style="margin-top:14px">
+      <div class="panel-head"><div><h2>最近 7 天 · 打卡量</h2><p>按学习记录日期聚合，不按页面访问量。</p></div><span class="tag gray">试点口径</span></div>
+      <div class="metric-chart">${bars || `<div class="memory-note">还没有打卡记录。</div>`}</div>
+      <div class="metric-note">
+        <b>试点先看 4 个数：</b>
+        ① 三问完成率 → ② 首日打卡率（有记录/有账号）→ ③ 第 3 天回访 → ④ 换法后效果变化。
+        小样本只描述，不宣称因果；基线是学习行为，不是学科分数。
+      </div>
+    </div>`;
 }
 
 async function loadSuggestions() {
@@ -158,6 +198,7 @@ function renderMethodList() {
 
 function renderMethodEditor() {
   const box = $("#methodEditor");
+  if (versionMode && selectedMethod) return renderVersionHistory();
   if (!selectedMethod) {
     box.innerHTML = `<div class="empty-state"><div class="big">🗂️</div><strong>选择一张方法卡</strong><p>左侧点击编辑，或新增一个方法。</p></div>`;
     return;
@@ -196,9 +237,87 @@ function renderMethodEditor() {
       ${area("evidence_note", "证据说明", m.evidence_note)}
     </div>
     <div class="editor-actions">
+      <button class="admin-secondary" id="methodVersions">版本历史</button>
       <button class="admin-secondary" id="methodPublish">${m.published ? "转为草稿" : "发布"}</button>
       <button class="admin-primary" id="methodSave">保存方法卡</button>
     </div>`;
+}
+
+const VERSION_FIELDS = [
+  ["name", "方法名"], ["category", "分类"], ["domains", "领域"], ["evidence", "证据等级"],
+  ["time", "时间"], ["difficulty", "难度"], ["one_liner", "一句话"], ["why", "为什么有效"],
+  ["steps", "步骤"], ["materials", "资料"], ["metric", "成功指标"], ["fail", "常见失败"],
+  ["switch_when", "换法条件"], ["source", "来源"], ["evidence_note", "证据说明"],
+];
+
+function fmtVersionValue(value) {
+  if (Array.isArray(value)) return value.join(" / ");
+  return String(value ?? "");
+}
+
+function versionDiff(current, target) {
+  return VERSION_FIELDS
+    .filter(([key]) => JSON.stringify(current[key] ?? "") !== JSON.stringify(target[key] ?? ""))
+    .map(([key, label]) => ({ key, label, from: target[key], to: current[key] }));
+}
+
+function renderVersionHistory() {
+  const box = $("#methodEditor");
+  if (!methodVersions.length) {
+    box.innerHTML = `<div class="editor-head"><div><h3>版本历史</h3><p class="muted">还没有版本记录；下一次保存会自动生成。</p></div><button class="admin-secondary" id="versionBack">返回编辑</button></div>
+      <div class="empty-state"><div class="big">🕘</div><strong>暂无版本</strong><p>保存一次方法卡后，这里会出现可回滚的快照。</p></div>`;
+    return;
+  }
+  const current = selectedMethod;
+  const target = methodVersions.find((v) => v.version === selectedVersion) || methodVersions[0];
+  const diffs = versionDiff(current, target.data);
+  box.innerHTML = `
+    <div class="editor-head">
+      <div><h3>版本历史</h3><p class="muted">对比当前版本与历史快照；回滚会生成一个新版本，不会删历史。</p></div>
+      <button class="admin-secondary" id="versionBack">返回编辑</button>
+    </div>
+    <div class="version-layout">
+      <div class="version-list">
+        ${methodVersions.map((v) => `
+          <button class="version-item ${v.version === target.version ? "active" : ""}" data-version="${v.version}">
+            <b>v${v.version}</b><span>${fmt(v.created_at)}</span>
+            <em>${v.published ? "已发布" : "草稿"}</em>
+          </button>`).join("")}
+      </div>
+      <div class="version-diff">
+        <div class="version-diff-head">
+          <div><b>当前 → v${target.version}</b><span>${diffs.length ? `${diffs.length} 个字段不同` : "没有字段差异"}</span></div>
+          <button class="admin-primary" id="rollbackVersion" data-version="${target.version}" ${target.version === methodVersions[0].version ? "disabled" : ""}>回滚到 v${target.version}</button>
+        </div>
+        ${diffs.length ? diffs.map((d) => `
+          <div class="diff-row">
+            <div class="diff-key">${esc(d.label)}</div>
+            <div class="diff-values"><span class="old">${esc(fmtVersionValue(d.from)) || "（空）"}</span><span class="arrow">→</span><span class="new">${esc(fmtVersionValue(d.to)) || "（空）"}</span></div>
+          </div>`).join("") : `<div class="memory-note">这一版和当前内容一致。</div>`}
+      </div>
+    </div>`;
+}
+
+async function openVersions() {
+  if (!selectedMethod?.id) return;
+  versionMode = true;
+  methodVersions = [];
+  selectedVersion = null;
+  renderMethodEditor();
+  const data = await api(`/api/admin/methods/${encodeURIComponent(selectedMethod.id)}/versions`);
+  methodVersions = data.versions || [];
+  selectedVersion = methodVersions[0]?.version || null;
+  renderMethodEditor();
+}
+
+async function rollbackVersion() {
+  const version = Number($("#rollbackVersion")?.dataset.version);
+  if (!version || !selectedMethod?.id) return;
+  if (!confirm(`回滚到 v${version}？当前内容会先保留为新版本。`)) return;
+  await api(`/api/admin/methods/${encodeURIComponent(selectedMethod.id)}/rollback`, { method: "POST", body: { version } });
+  toast(`已回滚到 v${version}，并生成新版本。`);
+  versionMode = false;
+  await loadMethods();
 }
 
 function readMethodForm() {
@@ -235,7 +354,9 @@ async function saveMethod(publishedOverride) {
     return;
   }
   const published = publishedOverride === undefined ? Boolean(selectedMethod?.published) : publishedOverride;
-  await api("/api/admin/methods", { method: "POST", body: { method, published } });
+  const isExisting = Boolean(selectedMethod?.id);
+  const path = isExisting ? `/api/admin/methods/${encodeURIComponent(selectedMethod.id)}` : "/api/admin/methods";
+  await api(path, { method: isExisting ? "PATCH" : "POST", body: { method, published } });
   toast(published ? "已保存并发布，用户端刷新可见。" : "已保存为草稿。");
   selectedMethod = { ...method, published };
   await loadMethods();
@@ -267,8 +388,18 @@ function bind() {
     const methodBtn = e.target.closest("[data-method]");
     if (methodBtn) {
       selectedMethod = methods.find((m) => m.id === methodBtn.dataset.method) || null;
+      versionMode = false;
+      methodVersions = [];
       renderMethodList();
       return renderMethodEditor();
+    }
+    if (e.target.id === "methodVersions") return openVersions();
+    if (e.target.id === "versionBack") { versionMode = false; return renderMethodEditor(); }
+    if (e.target.id === "rollbackVersion") return rollbackVersion();
+    const versionBtn = e.target.closest("[data-version]");
+    if (versionBtn && versionMode) {
+      selectedVersion = Number(versionBtn.dataset.version);
+      return renderVersionHistory();
     }
     if (e.target.id === "detailSave") return saveSuggestion();
     if (e.target.id === "detailCancel") { $("#detailReply").value = ""; return; }
@@ -276,6 +407,8 @@ function bind() {
     if (e.target.id === "methodPublish") return saveMethod(!selectedMethod?.published);
     if (e.target.id === "newMethodBtn") {
       selectedMethod = { id: "", name: "", en: "", category: "通用", domains: ["通用"], evidence: "C", evidence_note: "", time: 20, difficulty: 2, one_liner: "", why: "", steps: [], materials: [], metric: "", fail: [], switch_when: "", source: "", published: false };
+      versionMode = false;
+      methodVersions = [];
       renderMethodList();
       return renderMethodEditor();
     }
@@ -289,6 +422,7 @@ function bind() {
       await loadStats();
       if (view === "suggestions") await loadSuggestions();
       if (view === "methods") await loadMethods();
+      if (view === "metrics") await loadMetrics();
       if (view === "users") await loadUsers();
       toast("已刷新");
     }
@@ -312,6 +446,7 @@ async function init() {
   await loadStats();
   await loadSuggestions();
   await loadMethods();
+  await loadMetrics();
   await loadUsers();
 }
 

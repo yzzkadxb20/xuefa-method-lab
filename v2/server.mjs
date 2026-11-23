@@ -85,6 +85,17 @@ CREATE TABLE IF NOT EXISTS methods (
   updated_by TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_methods_published ON methods(published);
+CREATE TABLE IF NOT EXISTS method_versions (
+  id TEXT PRIMARY KEY,
+  method_id TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  data_json TEXT NOT NULL,
+  published INTEGER NOT NULL DEFAULT 1,
+  updated_by TEXT,
+  created_at INTEGER NOT NULL,
+  UNIQUE(method_id, version)
+);
+CREATE INDEX IF NOT EXISTS idx_method_versions_method ON method_versions(method_id, version DESC);
 `);
 const stateCols = db.prepare("PRAGMA table_info(user_states)").all();
 if (!stateCols.some((c) => c.name === "revision")) {
@@ -556,6 +567,65 @@ async function handleApi(req, res, url) {
     return true;
   }
 
+  if (p === "/api/admin/metrics" && req.method === "GET") {
+    const admin = requireAdmin(req, res);
+    if (!admin) return true;
+    const users = db.prepare("SELECT COUNT(*) AS total FROM users WHERE role = 'user'").get();
+    const states = db.prepare(
+      "SELECT st.user_id, st.state_json, st.updated_at FROM user_states st JOIN users u ON u.id = st.user_id WHERE u.role = 'user'"
+    ).all();
+    const suggestions = db.prepare("SELECT status, COUNT(*) AS n FROM suggestions GROUP BY status").all();
+    const methods = db.prepare("SELECT COUNT(*) AS total, SUM(published) AS published FROM methods").get();
+    const nowMs = now();
+    const weekAgo = nowMs - 7 * 24 * 60 * 60 * 1000;
+    const parsed = states.map((r) => {
+      let s = {};
+      try { s = JSON.parse(r.state_json); } catch {}
+      return { ...r, state: s, updated_at: Number(r.updated_at) };
+    });
+    const logs = parsed.flatMap((r) => Array.isArray(r.state.logs) ? r.state.logs : []);
+    const trials = parsed.flatMap((r) => Array.isArray(r.state.trials) ? r.state.trials : []);
+    const avg = (arr) => arr.length ? Math.round(arr.reduce((a, b) => a + Number(b || 0), 0) / arr.length) : 0;
+    const withLogs = parsed.filter((r) => (r.state.logs || []).length > 0).length;
+    const active7d = parsed.filter((r) => r.updated_at >= weekAgo).length;
+    const withBaseline = parsed.filter((r) => r.state.baseline && !r.state.baseline.skipped).length;
+    const skippedBaseline = parsed.filter((r) => r.state.baseline?.skipped).length;
+    const blocked = parsed.filter((r) => r.state.gate?.complete && !(r.state.logs || []).length).length;
+    const switched = trials.filter((t) => t.status === "switched").length;
+    const suggestionMap = Object.fromEntries(suggestions.map((x) => [x.status, Number(x.n)]));
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(nowMs - (6 - i) * 24 * 60 * 60 * 1000);
+      const key = d.toISOString().slice(0, 10);
+      const dayLogs = logs.filter((l) => l.date === key);
+      return {
+        date: key,
+        label: `${d.getMonth() + 1}/${d.getDate()}`,
+        logs: dayLogs.length,
+        users: new Set(parsed.filter((r) => (r.state.logs || []).some((l) => l.date === key)).map((r) => r.user_id)).size,
+        completion: avg(dayLogs.map((l) => l.completion)),
+        effect: avg(dayLogs.map((l) => l.effect)),
+      };
+    });
+    sendJson(res, 200, {
+      users: { total: Number(users.total), active7d, withLogs, startedNoLogs: blocked },
+      learning: {
+        logs: logs.length,
+        avgCompletion: avg(logs.map((l) => l.completion)),
+        avgEffect: avg(logs.map((l) => l.effect)),
+        trials: trials.length,
+        switched,
+        switchRate: trials.length ? Math.round((switched / trials.length) * 100) : 0,
+        baselineDone: withBaseline,
+        baselineSkipped: skippedBaseline,
+        baselineMissing: Math.max(0, parsed.length - withBaseline - skippedBaseline),
+      },
+      suggestions: { pending: suggestionMap.pending || 0, reviewing: suggestionMap.reviewing || 0, resolved: suggestionMap.resolved || 0, rejected: suggestionMap.rejected || 0 },
+      methods: { total: Number(methods.total), published: Number(methods.published || 0) },
+      days,
+    });
+    return true;
+  }
+
   if (p === "/api/admin/suggestions" && req.method === "GET") {
     const admin = requireAdmin(req, res);
     if (!admin) return true;
@@ -637,7 +707,60 @@ async function handleApi(req, res, url) {
       `INSERT INTO methods (id, data_json, published, created_at, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET data_json = excluded.data_json, published = excluded.published, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
     ).run(method.id, JSON.stringify(method), published, now(), now(), admin.id);
-    sendJson(res, 200, { ok: true, id: method.id, published: !!published });
+    const vc = db.prepare("SELECT COUNT(*) AS n FROM method_versions WHERE method_id = ?").get(method.id);
+    if (!vc.n) {
+      db.prepare(
+        "INSERT INTO method_versions (id, method_id, version, data_json, published, updated_by, created_at) VALUES (?, ?, 1, ?, ?, ?, ?)"
+      ).run(uid(), method.id, JSON.stringify(method), published, admin.id, now());
+    }
+    sendJson(res, 200, { ok: true, id: method.id, published: !!published, version: 1 });
+    return true;
+  }
+
+  const mversions = p.match(/^\/api\/admin\/methods\/([^/]+)\/versions$/);
+  if (mversions && req.method === "GET") {
+    const admin = requireAdmin(req, res);
+    if (!admin) return true;
+    const rows = db.prepare(
+      "SELECT version, data_json, published, updated_by, created_at FROM method_versions WHERE method_id = ? ORDER BY version DESC LIMIT 50"
+    ).all(mversions[1]);
+    sendJson(res, 200, {
+      versions: rows.map((x) => ({
+        version: Number(x.version),
+        data: JSON.parse(x.data_json),
+        published: !!x.published,
+        updated_by: x.updated_by,
+        created_at: Number(x.created_at),
+      })),
+    });
+    return true;
+  }
+
+  const mrollback = p.match(/^\/api\/admin\/methods\/([^/]+)\/rollback$/);
+  if (mrollback && req.method === "POST") {
+    const admin = requireAdmin(req, res);
+    if (!admin) return true;
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const targetVersion = Number(body.version);
+    if (!Number.isInteger(targetVersion) || targetVersion < 1) {
+      sendJson(res, 400, { error: "version 不正确" });
+      return true;
+    }
+    const target = db.prepare("SELECT data_json, published FROM method_versions WHERE method_id = ? AND version = ?").get(mrollback[1], targetVersion);
+    if (!target) {
+      sendJson(res, 404, { error: "版本不存在" });
+      return true;
+    }
+    const nextVersion = Number(db.prepare("SELECT COALESCE(MAX(version), 0) + 1 AS v FROM method_versions WHERE method_id = ?").get(mrollback[1]).v);
+    const data = JSON.parse(target.data_json);
+    const published = target.published ? 1 : 0;
+    db.prepare("UPDATE methods SET data_json = ?, published = ?, updated_at = ?, updated_by = ? WHERE id = ?").run(
+      JSON.stringify(data), published, now(), admin.id, mrollback[1]
+    );
+    db.prepare(
+      "INSERT INTO method_versions (id, method_id, version, data_json, published, updated_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run(uid(), mrollback[1], nextVersion, JSON.stringify(data), published, admin.id, now());
+    sendJson(res, 200, { ok: true, id: mrollback[1], version: nextVersion, rolledBackTo: targetVersion });
     return true;
   }
 
@@ -651,13 +774,22 @@ async function handleApi(req, res, url) {
       sendJson(res, 404, { error: "方法不存在" });
       return true;
     }
-    const merged = body.method ? { ...JSON.parse(existing.data_json), ...body.method, id: mm[1] } : JSON.parse(existing.data_json);
+    const currentData = JSON.parse(existing.data_json);
+    const currentPublished = existing.published;
+    const merged = body.method ? { ...currentData, ...body.method, id: mm[1] } : currentData;
     const method = normalizeMethod(merged);
     if (!method) {
       sendJson(res, 400, { error: "方法数据不完整" });
       return true;
     }
-    const published = body.published === undefined ? existing.published : body.published ? 1 : 0;
+    const published = body.published === undefined ? currentPublished : body.published ? 1 : 0;
+    const vc = db.prepare("SELECT COUNT(*) AS n FROM method_versions WHERE method_id = ?").get(mm[1]);
+    if (!vc.n) {
+      db.prepare(
+        "INSERT INTO method_versions (id, method_id, version, data_json, published, updated_by, created_at) VALUES (?, ?, 1, ?, ?, ?, ?)"
+      ).run(uid(), mm[1], JSON.stringify(currentData), currentPublished, admin.id, now());
+    }
+    const nextVersion = Number(db.prepare("SELECT COALESCE(MAX(version), 0) + 1 AS v FROM method_versions WHERE method_id = ?").get(mm[1]).v);
     db.prepare("UPDATE methods SET data_json = ?, published = ?, updated_at = ?, updated_by = ? WHERE id = ?").run(
       JSON.stringify(method),
       published,
@@ -665,7 +797,10 @@ async function handleApi(req, res, url) {
       admin.id,
       mm[1]
     );
-    sendJson(res, 200, { ok: true, id: mm[1], published: !!published });
+    db.prepare(
+      "INSERT INTO method_versions (id, method_id, version, data_json, published, updated_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run(uid(), mm[1], nextVersion, JSON.stringify(method), published, admin.id, now());
+    sendJson(res, 200, { ok: true, id: mm[1], published: !!published, version: nextVersion });
     return true;
   }
 

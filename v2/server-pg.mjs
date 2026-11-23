@@ -165,6 +165,17 @@ async function initDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_methods_published ON methods(published);
     ALTER TABLE user_states ADD COLUMN IF NOT EXISTS revision INTEGER NOT NULL DEFAULT 0;
+    CREATE TABLE IF NOT EXISTS method_versions (
+      id TEXT PRIMARY KEY,
+      method_id TEXT NOT NULL,
+      version INTEGER NOT NULL,
+      data_json TEXT NOT NULL,
+      published BOOLEAN NOT NULL DEFAULT TRUE,
+      updated_by TEXT,
+      created_at BIGINT NOT NULL,
+      UNIQUE(method_id, version)
+    );
+    CREATE INDEX IF NOT EXISTS idx_method_versions_method ON method_versions(method_id, version DESC);
   `);
 
   for (const m of methodSeed) {
@@ -532,6 +543,65 @@ async function api(req, res, url) {
     return true;
   }
 
+  if (p === "/api/admin/metrics" && req.method === "GET") {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return true;
+    const [users, states, suggestions, methods] = await Promise.all([
+      q("SELECT COUNT(*)::int AS total FROM users WHERE role = 'user'"),
+      q("SELECT st.user_id, st.state_json, st.updated_at FROM user_states st JOIN users u ON u.id = st.user_id WHERE u.role = 'user'"),
+      q("SELECT status, COUNT(*)::int AS n FROM suggestions GROUP BY status"),
+      q("SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE published = TRUE)::int AS published FROM methods"),
+    ]);
+    const nowMs = now();
+    const weekAgo = nowMs - 7 * 24 * 60 * 60 * 1000;
+    const parsed = states.rows.map((r) => {
+      let s = {};
+      try { s = JSON.parse(r.state_json); } catch {}
+      return { ...r, state: s, updated_at: Number(r.updated_at) };
+    });
+    const logs = parsed.flatMap((r) => Array.isArray(r.state.logs) ? r.state.logs : []);
+    const trials = parsed.flatMap((r) => Array.isArray(r.state.trials) ? r.state.trials : []);
+    const avg = (arr) => arr.length ? Math.round(arr.reduce((a, b) => a + Number(b || 0), 0) / arr.length) : 0;
+    const withLogs = parsed.filter((r) => (r.state.logs || []).length > 0).length;
+    const active7d = parsed.filter((r) => r.updated_at >= weekAgo).length;
+    const withBaseline = parsed.filter((r) => r.state.baseline && !r.state.baseline.skipped).length;
+    const skippedBaseline = parsed.filter((r) => r.state.baseline?.skipped).length;
+    const blocked = parsed.filter((r) => r.state.gate?.complete && !(r.state.logs || []).length).length;
+    const switched = trials.filter((t) => t.status === "switched").length;
+    const suggestionMap = Object.fromEntries(suggestions.rows.map((x) => [x.status, Number(x.n)]));
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(nowMs - (6 - i) * 24 * 60 * 60 * 1000);
+      const key = d.toISOString().slice(0, 10);
+      const dayLogs = logs.filter((l) => l.date === key);
+      return {
+        date: key,
+        label: `${d.getMonth() + 1}/${d.getDate()}`,
+        logs: dayLogs.length,
+        users: new Set(parsed.filter((r) => (r.state.logs || []).some((l) => l.date === key)).map((r) => r.user_id)).size,
+        completion: avg(dayLogs.map((l) => l.completion)),
+        effect: avg(dayLogs.map((l) => l.effect)),
+      };
+    });
+    sendJson(res, 200, {
+      users: { total: Number(users.rows[0].total), active7d, withLogs, startedNoLogs: blocked },
+      learning: {
+        logs: logs.length,
+        avgCompletion: avg(logs.map((l) => l.completion)),
+        avgEffect: avg(logs.map((l) => l.effect)),
+        trials: trials.length,
+        switched,
+        switchRate: trials.length ? Math.round((switched / trials.length) * 100) : 0,
+        baselineDone: withBaseline,
+        baselineSkipped: skippedBaseline,
+        baselineMissing: Math.max(0, parsed.length - withBaseline - skippedBaseline),
+      },
+      suggestions: { pending: suggestionMap.pending || 0, reviewing: suggestionMap.reviewing || 0, resolved: suggestionMap.resolved || 0, rejected: suggestionMap.rejected || 0 },
+      methods: { total: Number(methods.rows[0].total), published: Number(methods.rows[0].published) },
+      days,
+    });
+    return true;
+  }
+
   if (p === "/api/admin/suggestions" && req.method === "GET") {
     const admin = await requireAdmin(req, res);
     if (!admin) return true;
@@ -604,7 +674,64 @@ async function api(req, res, url) {
        ON CONFLICT (id) DO UPDATE SET data_json = EXCLUDED.data_json, published = EXCLUDED.published, updated_at = EXCLUDED.updated_at, updated_by = EXCLUDED.updated_by`,
       [method.id, JSON.stringify(method), published, now(), now(), admin.id]
     );
-    sendJson(res, 200, { ok: true, id: method.id, published });
+    const vc = await q("SELECT COUNT(*)::int AS n FROM method_versions WHERE method_id = $1", [method.id]);
+    if (!vc.rows[0].n) {
+      await q(
+        "INSERT INTO method_versions (id, method_id, version, data_json, published, updated_by, created_at) VALUES ($1, $2, 1, $3, $4, $5, $6)",
+        [uid(), method.id, JSON.stringify(method), published, admin.id, now()]
+      );
+    }
+    sendJson(res, 200, { ok: true, id: method.id, published, version: 1 });
+    return true;
+  }
+
+  const mversions = p.match(/^\/api\/admin\/methods\/([^/]+)\/versions$/);
+  if (mversions && req.method === "GET") {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return true;
+    const r = await q(
+      "SELECT version, data_json, published, updated_by, created_at FROM method_versions WHERE method_id = $1 ORDER BY version DESC LIMIT 50",
+      [mversions[1]]
+    );
+    sendJson(res, 200, {
+      versions: r.rows.map((x) => ({
+        version: Number(x.version),
+        data: JSON.parse(x.data_json),
+        published: Boolean(x.published),
+        updated_by: x.updated_by,
+        created_at: Number(x.created_at),
+      })),
+    });
+    return true;
+  }
+
+  const mrollback = p.match(/^\/api\/admin\/methods\/([^/]+)\/rollback$/);
+  if (mrollback && req.method === "POST") {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return true;
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const targetVersion = Number(body.version);
+    if (!Number.isInteger(targetVersion) || targetVersion < 1) {
+      sendJson(res, 400, { error: "version 不正确" });
+      return true;
+    }
+    const vr = await q("SELECT data_json, published FROM method_versions WHERE method_id = $1 AND version = $2", [mrollback[1], targetVersion]);
+    if (!vr.rows[0]) {
+      sendJson(res, 404, { error: "版本不存在" });
+      return true;
+    }
+    const data = JSON.parse(vr.rows[0].data_json);
+    const published = Boolean(vr.rows[0].published);
+    const nc = await q("SELECT COALESCE(MAX(version), 0) + 1 AS v FROM method_versions WHERE method_id = $1", [mrollback[1]]);
+    const nextVersion = Number(nc.rows[0].v);
+    await q("UPDATE methods SET data_json = $1, published = $2, updated_at = $3, updated_by = $4 WHERE id = $5", [
+      JSON.stringify(data), published, now(), admin.id, mrollback[1],
+    ]);
+    await q(
+      "INSERT INTO method_versions (id, method_id, version, data_json, published, updated_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      [uid(), mrollback[1], nextVersion, JSON.stringify(data), published, admin.id, now()]
+    );
+    sendJson(res, 200, { ok: true, id: mrollback[1], version: nextVersion, rolledBackTo: targetVersion });
     return true;
   }
 
@@ -618,17 +745,32 @@ async function api(req, res, url) {
       sendJson(res, 404, { error: "方法不存在" });
       return true;
     }
-    const merged = body.method ? { ...JSON.parse(ex.rows[0].data_json), ...body.method, id: mm[1] } : JSON.parse(ex.rows[0].data_json);
+    const currentData = JSON.parse(ex.rows[0].data_json);
+    const currentPublished = Boolean(ex.rows[0].published);
+    const merged = body.method ? { ...currentData, ...body.method, id: mm[1] } : currentData;
     const method = normalizeMethod(merged);
     if (!method) {
       sendJson(res, 400, { error: "方法数据不完整" });
       return true;
     }
-    const published = body.published === undefined ? ex.rows[0].published : Boolean(body.published);
+    const published = body.published === undefined ? currentPublished : Boolean(body.published);
+    const vc = await q("SELECT COUNT(*)::int AS n FROM method_versions WHERE method_id = $1", [mm[1]]);
+    if (!vc.rows[0].n) {
+      await q(
+        "INSERT INTO method_versions (id, method_id, version, data_json, published, updated_by, created_at) VALUES ($1, $2, 1, $3, $4, $5, $6)",
+        [uid(), mm[1], 1, JSON.stringify(currentData), currentPublished, admin.id, now()]
+      );
+    }
+    const nc = await q("SELECT COALESCE(MAX(version), 0) + 1 AS v FROM method_versions WHERE method_id = $1", [mm[1]]);
+    const nextVersion = Number(nc.rows[0].v);
     await q("UPDATE methods SET data_json = $1, published = $2, updated_at = $3, updated_by = $4 WHERE id = $5", [
       JSON.stringify(method), published, now(), admin.id, mm[1],
     ]);
-    sendJson(res, 200, { ok: true, id: mm[1], published });
+    await q(
+      "INSERT INTO method_versions (id, method_id, version, data_json, published, updated_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      [uid(), mm[1], nextVersion, JSON.stringify(method), published, admin.id, now()]
+    );
+    sendJson(res, 200, { ok: true, id: mm[1], published, version: nextVersion });
     return true;
   }
 
