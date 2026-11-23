@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS user_states (
   user_id TEXT PRIMARY KEY,
   state_json TEXT NOT NULL,
   updated_at INTEGER NOT NULL,
+  revision INTEGER NOT NULL DEFAULT 0,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS suggestions (
@@ -85,6 +86,10 @@ CREATE TABLE IF NOT EXISTS methods (
 );
 CREATE INDEX IF NOT EXISTS idx_methods_published ON methods(published);
 `);
+const stateCols = db.prepare("PRAGMA table_info(user_states)").all();
+if (!stateCols.some((c) => c.name === "revision")) {
+  db.exec("ALTER TABLE user_states ADD COLUMN revision INTEGER NOT NULL DEFAULT 0");
+}
 
 const now = () => Date.now();
 const uid = () => crypto.randomUUID();
@@ -443,8 +448,12 @@ async function handleApi(req, res, url) {
   if (p === "/api/state" && req.method === "GET") {
     const user = requireUser(req, res);
     if (!user) return true;
-    const row = db.prepare("SELECT state_json, updated_at FROM user_states WHERE user_id = ?").get(user.id);
-    sendJson(res, 200, { state: row ? JSON.parse(row.state_json) : null, updatedAt: row?.updated_at || null });
+    const row = db.prepare("SELECT state_json, updated_at, revision FROM user_states WHERE user_id = ?").get(user.id);
+    sendJson(res, 200, {
+      state: row ? JSON.parse(row.state_json) : null,
+      updatedAt: row?.updated_at || null,
+      revision: row?.revision ? Number(row.revision) : 0,
+    });
     return true;
   }
 
@@ -461,11 +470,41 @@ async function handleApi(req, res, url) {
       sendJson(res, 413, { error: "学习记录过大，请清理旧对话" });
       return true;
     }
-    db.prepare(
-      `INSERT INTO user_states (user_id, state_json, updated_at) VALUES (?, ?, ?)
-       ON CONFLICT(user_id) DO UPDATE SET state_json = excluded.state_json, updated_at = excluded.updated_at`
-    ).run(user.id, json, now());
-    sendJson(res, 200, { ok: true, updatedAt: now() });
+    const base = Number.isInteger(body.baseRevision) ? body.baseRevision : null;
+    const existing = db.prepare("SELECT revision FROM user_states WHERE user_id = ?").get(user.id);
+    if (!existing) {
+      db.prepare("INSERT INTO user_states (user_id, state_json, updated_at, revision) VALUES (?, ?, ?, 1)").run(user.id, json, now());
+      sendJson(res, 200, { ok: true, updatedAt: now(), revision: 1 });
+      return true;
+    }
+    const current = Number(existing.revision);
+    if (base !== null && base !== current) {
+      const latest = db.prepare("SELECT state_json, updated_at, revision FROM user_states WHERE user_id = ?").get(user.id);
+      sendJson(res, 409, {
+        error: "学习记录已被另一个页面更新",
+        conflict: true,
+        state: JSON.parse(latest.state_json),
+        updatedAt: latest.updated_at,
+        revision: Number(latest.revision),
+      });
+      return true;
+    }
+    const result = db.prepare(
+      `UPDATE user_states SET state_json = ?, updated_at = ?, revision = revision + 1
+       WHERE user_id = ? AND revision = ?`
+    ).run(json, now(), user.id, current);
+    if (!result.changes) {
+      const latest = db.prepare("SELECT state_json, updated_at, revision FROM user_states WHERE user_id = ?").get(user.id);
+      sendJson(res, 409, {
+        error: "学习记录已被另一个页面更新",
+        conflict: true,
+        state: JSON.parse(latest.state_json),
+        updatedAt: latest.updated_at,
+        revision: Number(latest.revision),
+      });
+      return true;
+    }
+    sendJson(res, 200, { ok: true, updatedAt: now(), revision: current + 1 });
     return true;
   }
 
