@@ -679,6 +679,64 @@ function looksLikePlanRequest(text) {
   );
 }
 
+function gateDomainConflict() {
+  const answers = state.gate.answers.filter(Boolean);
+  const domains = [...new Set(answers.map((a) => E.detectDomain(a)).filter((d) => d !== "通用" && d !== "时间管理"))];
+  if (domains.length < 2) return [];
+  const hasMakeup = domains.includes("审美/化妆");
+  const hasTech = domains.includes("编程/理工");
+  const hasExpression = domains.some((d) => ["英语口语", "口头表达", "写作"].includes(d));
+  const hasExam = domains.some((d) => ["考试", "专业课"].includes(d));
+  if (hasMakeup && (hasExpression || hasExam || hasTech)) return domains;
+  if (hasTech && hasExpression) return domains;
+  return [];
+}
+
+function openDomainConflict(domains) {
+  const choices = domains.slice(0, 3);
+  showModal(`
+    <div class="modal-backdrop">
+      <div class="modal narrow domain-modal" role="dialog" aria-modal="true" aria-label="确认学习目标">
+        <div class="modal-head">
+          <div><h3>我可能理解错了</h3><p>你的目标像「${esc(choices[0])}」，但另一条信息更像「${esc(choices[1] || "另一个方向")}」。这是同一个目标吗？</p></div>
+          <button class="modal-close" data-action="close-modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="domain-explain">我不急着生成方案：如果目标混了，后面的方法匹配和任务卡都会偏。你可以选一个方向，或者回去改答案。</p>
+          <div class="domain-choices">
+            ${choices.map((d) => `<button class="btn ${d === choices[0] ? "primary" : "ghost"}" data-action="resolve-domain" data-domain="${escAttr(d)}">按「${esc(d)}」继续</button>`).join("")}
+            <button class="btn ghost" data-action="reanswer-gate">我答错了，重答第 2 问</button>
+          </div>
+        </div>
+      </div>
+    </div>`);
+  state.gate.step = 2;
+  renderAll();
+}
+
+function resolveDomain(domain) {
+  state.gate.domain = domain;
+  state.gate.complete = true;
+  closeModal();
+  addMessage("agent", "text", `好，按「${domain}」继续。目标已锁定，起点和约束我会保留；如果后面发现不对，随时可以换法。`);
+  renderAll();
+  setTimeout(() => {
+    if (!state.baseline) openBaseline();
+    else startPlanGeneration();
+  }, 350);
+}
+
+function reanswerGate() {
+  state.gate.step = 1;
+  state.gate.answers[1] = "";
+  state.gate.answers[2] = "";
+  state.gate.complete = false;
+  state.gate.domain = "";
+  closeModal();
+  addMessage("agent", "text", "好，回到第 2 问。刚才的目标我保留，只改起点和约束；这次说清楚是同一个目标里的表现。");
+  renderAll();
+}
+
 function handleGate(text) {
   const t = text.trim();
   if (t.length < 3) {
@@ -703,7 +761,15 @@ function handleGate(text) {
     return;
   }
 
+  const conflicts = gateDomainConflict();
+  if (conflicts.length) {
+    addMessage("agent", "text", `我先停一下：你的目标像「${conflicts[0]}」，但另一条信息更像「${conflicts[1]}」。这可能是两个目标，也可能只是说法混了。先确认，不然方法会匹配错。`);
+    openDomainConflict(conflicts);
+    return;
+  }
+
   state.gate.complete = true;
+  state.gate.domain = "";
   addMessage("agent", "text", "三问完成 ✅ 还差最后一步：**60 秒学习行为基线**。\n\n5 道题，不考学科知识，只看你平时怎么学。答完我才生成方案；不想答也可以跳过，但报告会标“未测”。");
   renderAll();
   setTimeout(() => {
@@ -808,7 +874,7 @@ function generatePlan() {
     openBaseline();
     return;
   }
-  const profile = E.buildProfile(state.gate.answers, CURRENT_USER?.username || "学习用户");
+  const profile = E.buildProfile(state.gate.answers, CURRENT_USER?.username || "学习用户", state.gate.domain || "");
   const candidates = E.matchMethods(METHODS, profile);
   const method = candidates[0];
   if (!method) return;
@@ -1919,6 +1985,14 @@ function bindEvents() {
     }
     if (action === "open-baseline") {
       openBaseline();
+      return;
+    }
+    if (action === "resolve-domain") {
+      resolveDomain(el.dataset.domain);
+      return;
+    }
+    if (action === "reanswer-gate") {
+      reanswerGate();
       return;
     }
     if (action === "open-method") {

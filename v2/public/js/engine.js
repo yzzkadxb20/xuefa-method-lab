@@ -73,9 +73,9 @@ export function detectLevel(baseline) {
   return "有基础";
 }
 
-export function buildProfile(answers, name = "体验用户") {
+export function buildProfile(answers, name = "体验用户", forcedDomain = "") {
   const [goal = "", baseline = "", constraints = ""] = answers;
-  const domain = detectDomain(`${goal} ${baseline} ${constraints}`);
+  const domain = forcedDomain || detectDomain(`${goal} ${baseline} ${constraints}`);
   return {
     name,
     goal: goal.trim(),
