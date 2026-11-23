@@ -139,7 +139,8 @@ async function initDb() {
     CREATE TABLE IF NOT EXISTS user_states (
       user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       state_json TEXT NOT NULL,
-      updated_at BIGINT NOT NULL
+      updated_at BIGINT NOT NULL,
+      revision INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS suggestions (
       id TEXT PRIMARY KEY,
@@ -163,6 +164,7 @@ async function initDb() {
       updated_by TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_methods_published ON methods(published);
+    ALTER TABLE user_states ADD COLUMN IF NOT EXISTS revision INTEGER NOT NULL DEFAULT 0;
   `);
 
   for (const m of methodSeed) {
@@ -419,10 +421,11 @@ async function api(req, res, url) {
   if (p === "/api/state" && req.method === "GET") {
     const user = await requireUser(req, res);
     if (!user) return true;
-    const r = await q("SELECT state_json, updated_at FROM user_states WHERE user_id = $1", [user.id]);
+    const r = await q("SELECT state_json, updated_at, revision FROM user_states WHERE user_id = $1", [user.id]);
     sendJson(res, 200, {
       state: r.rows[0] ? JSON.parse(r.rows[0].state_json) : null,
       updatedAt: r.rows[0] ? Number(r.rows[0].updated_at) : null,
+      revision: r.rows[0] ? Number(r.rows[0].revision) : 0,
     });
     return true;
   }
@@ -440,12 +443,45 @@ async function api(req, res, url) {
       sendJson(res, 413, { error: "学习记录过大" });
       return true;
     }
-    await q(
-      `INSERT INTO user_states (user_id, state_json, updated_at) VALUES ($1, $2, $3)
-       ON CONFLICT (user_id) DO UPDATE SET state_json = EXCLUDED.state_json, updated_at = EXCLUDED.updated_at`,
-      [user.id, json, now()]
+    const base = Number.isInteger(body.baseRevision) ? body.baseRevision : null;
+    const existing = await q("SELECT revision FROM user_states WHERE user_id = $1", [user.id]);
+    if (!existing.rows.length) {
+      const r = await q(
+        "INSERT INTO user_states (user_id, state_json, updated_at, revision) VALUES ($1, $2, $3, 1) RETURNING revision",
+        [user.id, json, now()]
+      );
+      sendJson(res, 200, { ok: true, updatedAt: now(), revision: Number(r.rows[0].revision) });
+      return true;
+    }
+    const current = Number(existing.rows[0].revision);
+    if (base !== null && base !== current) {
+      const latest = await q("SELECT state_json, updated_at, revision FROM user_states WHERE user_id = $1", [user.id]);
+      sendJson(res, 409, {
+        error: "学习记录已被另一个页面更新",
+        conflict: true,
+        state: JSON.parse(latest.rows[0].state_json),
+        updatedAt: Number(latest.rows[0].updated_at),
+        revision: Number(latest.rows[0].revision),
+      });
+      return true;
+    }
+    const r = await q(
+      `UPDATE user_states SET state_json = $2, updated_at = $3, revision = revision + 1
+       WHERE user_id = $1 AND revision = $4 RETURNING revision`,
+      [user.id, json, now(), current]
     );
-    sendJson(res, 200, { ok: true, updatedAt: now() });
+    if (!r.rows.length) {
+      const latest = await q("SELECT state_json, updated_at, revision FROM user_states WHERE user_id = $1", [user.id]);
+      sendJson(res, 409, {
+        error: "学习记录已被另一个页面更新",
+        conflict: true,
+        state: JSON.parse(latest.rows[0].state_json),
+        updatedAt: Number(latest.rows[0].updated_at),
+        revision: Number(latest.rows[0].revision),
+      });
+      return true;
+    }
+    sendJson(res, 200, { ok: true, updatedAt: now(), revision: Number(r.rows[0].revision) });
     return true;
   }
 

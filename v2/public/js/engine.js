@@ -245,10 +245,21 @@ const TASK_OVERRIDES = {
   ],
 };
 
+const TASK_REASONS = [
+  "先拿到今天的真实起点：不先暴露卡点，后面的练习没有对照。",
+  "把“看过/听过”变成可检查的输出，这一步才是效果发生的地方。",
+  "只留一个验收动作，明天才知道该保留还是换法。",
+];
+
 export function buildTasks(profile, method) {
   const fn = TASK_TEMPLATES[profile.domain] || TASK_TEMPLATES["通用"];
   const override = TASK_OVERRIDES[method.id];
-  const tasks = (override ? override() : fn(method)).map((t, i) => ({ ...t, id: `${method.id}-${i}`, done: false }));
+  const tasks = (override ? override() : fn(method)).map((t, i) => ({
+    ...t,
+    id: `${method.id}-${i}`,
+    done: false,
+    reason: t.reason || TASK_REASONS[i] || TASK_REASONS[0],
+  }));
   return {
     tasks,
     totalMinutes: tasks.reduce((s, t) => s + t.minutes, 0),
@@ -309,6 +320,65 @@ export function decideOutcome({ completion, difficulty, score, effect }) {
     reason: `效果分 ${effect}，完成率 ${completion}%，说明方法能被你执行并产生结果。明天只加一个变量：素材难度或自测严格度。`,
   };
 }
+
+/* 60 秒学习行为基线：不考学科知识，测“怎么学”的可观察习惯。 */
+export const BASELINE_QUESTIONS = [
+  {
+    id: "b1",
+    q: "开始学一个新主题时，你通常先做什么？",
+    options: [
+      { text: "先看例子/题目，再合上资料自己回忆", score: 3 },
+      { text: "从头读到尾，划重点", score: 2 },
+      { text: "直接看答案或范文", score: 1 },
+      { text: "先做几道题，错了再回头学", score: 2 },
+    ],
+  },
+  {
+    id: "b2",
+    q: "练完一段内容，你会怎么确认自己真的会了？",
+    options: [
+      { text: "合上资料复述/重做一遍，找卡点", score: 3 },
+      { text: "重新读一遍，感觉懂了", score: 1 },
+      { text: "只看答案对不对", score: 2 },
+      { text: "讲给别人听，或录一遍回听", score: 3 },
+    ],
+  },
+  {
+    id: "b3",
+    q: "连续练了几天没效果，你更可能怎么做？",
+    options: [
+      { text: "先看卡在哪，换一种更小的练法", score: 3 },
+      { text: "继续加时长，觉得练得还不够", score: 1 },
+      { text: "换一个完全不同的新方法", score: 1 },
+      { text: "先停下来，找人问清楚", score: 2 },
+    ],
+  },
+  {
+    id: "b4",
+    q: "你怎么判断今天的学习有没有用？",
+    options: [
+      { text: "有没有产出一个可检查的结果", score: 3 },
+      { text: "今天学得累不累、爽不爽", score: 1 },
+      { text: "做对了几道题/拿了多少分", score: 2 },
+      { text: "别人有没有夸我", score: 1 },
+    ],
+  },
+  {
+    id: "b5",
+    q: "你会为下一次留下什么记录？",
+    options: [
+      { text: "卡点 + 下次只改的一个变量", score: 3 },
+      { text: "只记学了多久", score: 1 },
+      { text: "记完成率和自测分", score: 2 },
+      { text: "基本不记录", score: 0 },
+    ],
+  },
+];
+
+export const BASELINE_META = {
+  title: "60 秒学习行为基线",
+  intro: "5 道题，不考学科知识，只看你平时怎么学。答完才会生成方案；也可以跳过，但报告会标“未测”。",
+};
 
 export const SCENARIOS = {
   english: {
