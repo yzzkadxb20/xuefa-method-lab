@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#10231e" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>重置密码 · 学法实验室</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="login.css" />
+</head>
+<body class="auth-body">
+  <div class="auth-shell">
+    <section class="auth-brand">
+      <div class="auth-brand-top">
+        <div class="auth-mark" aria-hidden="true"></div>
+        <div><div class="auth-wordmark">学法实验室</div><div class="auth-wordmark-sub">METHOD LAB</div></div>
+      </div>
+      <div class="auth-brand-copy">
+        <div class="auth-eyebrow">ACCOUNT / RECOVERY</div>
+        <h1>重置密码，<br>把记忆接回来。</h1>
+        <p>这个版本没有邮箱系统，所以采用一次性重置码。向管理员获取，15 分钟内有效，只能用一次。</p>
+      </div>
+      <div class="auth-brand-foot"><span>一次性重置码</span><span class="auth-dot"></span><span>15 分钟有效</span></div>
+    </section>
+
+    <section class="auth-panel">
+      <div class="auth-card">
+        <div class="auth-card-head">
+          <div class="auth-kicker">ACCOUNT / 找回</div>
+          <h2>重置密码</h2>
+          <p>输入用户名、管理员给的重置码，以及新密码。重置后旧登录会全部退出。</p>
+        </div>
+
+        <form id="resetForm" autocomplete="off">
+          <label class="auth-field">
+            <span>用户名</span>
+            <input id="username" name="username" type="text" autocomplete="username" placeholder="你的用户名" required />
+          </label>
+          <label class="auth-field">
+            <span>一次性重置码</span>
+            <input id="resetCode" name="resetCode" type="text" inputmode="text" autocomplete="one-time-code" placeholder="例如 A1B2-C3D4" maxlength="20" required />
+          </label>
+          <label class="auth-field">
+            <span>新密码</span>
+            <input id="password" name="password" type="password" autocomplete="new-password" placeholder="至少 8 位" minlength="8" required />
+          </label>
+          <label class="auth-field">
+            <span>确认新密码</span>
+            <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="再输入一次" minlength="8" required />
+          </label>
+          <div class="auth-error" id="resetError" role="alert"></div>
+          <button class="auth-submit" id="resetBtn" type="submit">重置密码</button>
+        </form>
+
+        <div class="auth-foot">
+          <span>想起来了？</span>
+          <a href="login.html">返回登录</a>
+        </div>
+        <div class="auth-foot auth-foot-muted">
+          <span>没有重置码？联系管理员生成，不要重复尝试。</span>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script type="module" src="js/reset.js"></script>
+</body>
+</html>

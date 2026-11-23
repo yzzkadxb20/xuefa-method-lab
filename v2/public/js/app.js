@@ -1511,6 +1511,42 @@ async function loadMySuggestions() {
   }
 }
 
+function openAccountSettings() {
+  showModal(`
+    <div class="modal-backdrop">
+      <div class="modal narrow" role="dialog" aria-modal="true" aria-label="账号设置">
+        <div class="modal-head">
+          <div><h3>账号设置</h3><p>@${esc(CURRENT_USER?.username || "用户")} · 删除后目标、反馈、建议都会消失，无法恢复。</p></div>
+          <button class="modal-close" data-action="close-modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="plan-metric"><strong>删除账号前请确认：</strong>这不是“清空记忆”，而是删除账号和全部学习数据。演示账号不能删除。</div>
+          <label class="detail-label" style="display:block;margin-top:14px">输入当前密码确认</label>
+          <input class="admin-input" id="deleteAccountPassword" type="password" autocomplete="current-password" placeholder="当前密码" style="width:100%;margin-top:6px" />
+        </div>
+        <div class="modal-foot">
+          <button class="btn ghost" data-action="close-modal">取消</button>
+          <button class="btn coral" data-action="confirm-delete-account">删除账号</button>
+        </div>
+      </div>
+    </div>`);
+}
+
+async function deleteAccount() {
+  const password = $("#deleteAccountPassword")?.value || "";
+  if (!password) {
+    toast("请输入当前密码。");
+    return;
+  }
+  try {
+    await api("/api/account", { method: "DELETE", body: { password } });
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    location.href = "/login.html";
+  } catch (err) {
+    toast(err.message || "删除失败");
+  }
+}
+
 async function logout() {
   if (stateDirty) await saveServerState({ force: true });
   try {
@@ -1985,6 +2021,14 @@ function bindEvents() {
     }
     if (action === "open-baseline") {
       openBaseline();
+      return;
+    }
+    if (action === "account-settings") {
+      openAccountSettings();
+      return;
+    }
+    if (action === "confirm-delete-account") {
+      deleteAccount();
       return;
     }
     if (action === "resolve-domain") {

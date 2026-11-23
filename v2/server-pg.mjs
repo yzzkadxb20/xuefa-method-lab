@@ -59,6 +59,8 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin12345";
 const now = () => Date.now();
 const uid = () => crypto.randomUUID();
 const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
+const normalizeResetCode = (s) => String(s || "").replace(/[\s-]/g, "").toUpperCase();
+const makeResetCode = () => crypto.randomBytes(4).toString("hex").toUpperCase().replace(/(.{4})/, "$1-");
 const AUTH_WINDOW_MS = 15 * 60 * 1000;
 const AUTH_MAX_ATTEMPTS = 8;
 const authAttempts = new Map();
@@ -176,6 +178,15 @@ async function initDb() {
       UNIQUE(method_id, version)
     );
     CREATE INDEX IF NOT EXISTS idx_method_versions_method ON method_versions(method_id, version DESC);
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      code_hash TEXT NOT NULL,
+      expires_at BIGINT NOT NULL,
+      used_at BIGINT,
+      created_at BIGINT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id, created_at DESC);
   `);
 
   for (const m of methodSeed) {
@@ -199,6 +210,7 @@ async function initDb() {
     }
   }
   await q("DELETE FROM sessions WHERE expires_at <= $1", [now()]);
+  await q("DELETE FROM password_resets WHERE expires_at <= $1 OR used_at IS NOT NULL", [now()]);
 }
 
 function sendJson(res, status, payload, extra = {}) {
@@ -414,6 +426,39 @@ async function api(req, res, url) {
     return true;
   }
 
+  if (p === "/api/auth/reset-password" && req.method === "POST") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const username = text(body.username, 64, 1);
+    const password = String(body.password || "");
+    const code = normalizeResetCode(body.code);
+    if (!username || !code || password.length < 8 || password.length > 128) {
+      sendJson(res, 400, { error: "用户名、重置码和至少 8 位新密码都要填" });
+      return true;
+    }
+    const key = rateKey(req, "reset", username);
+    const limit = checkRate(key);
+    if (!limit.ok) {
+      sendJson(res, 429, { error: "尝试次数过多，请稍后再试" }, { "Retry-After": String(limit.retryAfter) });
+      return true;
+    }
+    const user = await q("SELECT id, disabled FROM users WHERE lower(username) = lower($1)", [username]);
+    const row = user.rows[0];
+    const reset = row
+      ? await q("SELECT id, code_hash, expires_at FROM password_resets WHERE user_id = $1 AND used_at IS NULL ORDER BY created_at DESC LIMIT 1", [row.id])
+      : { rows: [] };
+    const r = reset.rows[0];
+    if (!row || row.disabled || !r || Number(r.expires_at) < now() || sha256(code) !== r.code_hash) {
+      sendJson(res, 400, { error: "重置码无效或已过期，请让管理员重新生成" });
+      return true;
+    }
+    await q("UPDATE users SET password_hash = $1 WHERE id = $2", [hashPassword(password), row.id]);
+    await q("UPDATE password_resets SET used_at = $1 WHERE id = $2", [now(), r.id]);
+    await q("DELETE FROM sessions WHERE user_id = $1", [row.id]);
+    clearRate(key);
+    sendJson(res, 200, { ok: true });
+    return true;
+  }
+
   if (p === "/api/auth/logout" && req.method === "POST") {
     const token = cookies(req).ml_session;
     if (token) await q("DELETE FROM sessions WHERE token_hash = $1", [sha256(token)]);
@@ -426,6 +471,25 @@ async function api(req, res, url) {
     const user = await requireUser(req, res);
     if (!user) return true;
     sendJson(res, 200, { user });
+    return true;
+  }
+
+  if (p === "/api/account" && req.method === "DELETE") {
+    const user = await requireUser(req, res);
+    if (!user) return true;
+    if (user.role === "admin" || user.username === "demo") {
+      sendJson(res, 403, { error: "演示账号和管理员账号不能删除" });
+      return true;
+    }
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const u = await q("SELECT password_hash FROM users WHERE id = $1", [user.id]);
+    if (!u.rows[0] || !verifyPassword(String(body.password || ""), u.rows[0].password_hash)) {
+      sendJson(res, 403, { error: "密码不正确，账号未删除" });
+      return true;
+    }
+    await q("DELETE FROM users WHERE id = $1", [user.id]);
+    clearCookie(res);
+    sendJson(res, 200, { ok: true });
     return true;
   }
 
@@ -645,6 +709,26 @@ async function api(req, res, url) {
        ORDER BY u.created_at DESC LIMIT 200`
     );
     sendJson(res, 200, { users: r.rows.map((x) => ({ ...x, created_at: Number(x.created_at), state_updated_at: x.state_updated_at ? Number(x.state_updated_at) : null })) });
+    return true;
+  }
+
+  const ru = p.match(/^\/api\/admin\/users\/([^/]+)\/reset-code$/);
+  if (ru && req.method === "POST") {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return true;
+    const target = await q("SELECT id, username FROM users WHERE id = $1", [ru[1]]);
+    if (!target.rows[0]) {
+      sendJson(res, 404, { error: "用户不存在" });
+      return true;
+    }
+    const code = makeResetCode();
+    const expiresAt = now() + 15 * 60 * 1000;
+    await q("DELETE FROM password_resets WHERE user_id = $1 AND used_at IS NULL", [ru[1]]);
+    await q(
+      "INSERT INTO password_resets (id, user_id, code_hash, expires_at, used_at, created_at) VALUES ($1, $2, $3, $4, NULL, $5)",
+      [uid(), ru[1], sha256(normalizeResetCode(code)), expiresAt, now()]
+    );
+    sendJson(res, 200, { code, expiresAt, username: target.rows[0].username });
     return true;
   }
 

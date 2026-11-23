@@ -96,6 +96,16 @@ CREATE TABLE IF NOT EXISTS method_versions (
   UNIQUE(method_id, version)
 );
 CREATE INDEX IF NOT EXISTS idx_method_versions_method ON method_versions(method_id, version DESC);
+CREATE TABLE IF NOT EXISTS password_resets (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  code_hash TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  used_at INTEGER,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id, created_at DESC);
 `);
 const stateCols = db.prepare("PRAGMA table_info(user_states)").all();
 if (!stateCols.some((c) => c.name === "revision")) {
@@ -105,6 +115,8 @@ if (!stateCols.some((c) => c.name === "revision")) {
 const now = () => Date.now();
 const uid = () => crypto.randomUUID();
 const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
+const normalizeResetCode = (s) => String(s || "").replace(/[\s-]/g, "").toUpperCase();
+const makeResetCode = () => crypto.randomBytes(4).toString("hex").toUpperCase().replace(/(.{4})/, "$1-");
 const AUTH_WINDOW_MS = 15 * 60 * 1000;
 const AUTH_MAX_ATTEMPTS = 8;
 const authAttempts = new Map();
@@ -196,6 +208,7 @@ seedAdmin();
 // cleanup old sessions on boot, then hourly
 function cleanupSessions() {
   db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(now());
+  db.prepare("DELETE FROM password_resets WHERE expires_at <= ? OR used_at IS NOT NULL").run(now());
 }
 cleanupSessions();
 setInterval(cleanupSessions, 60 * 60 * 1000).unref();
@@ -441,6 +454,37 @@ async function handleApi(req, res, url) {
     return true;
   }
 
+  if (p === "/api/auth/reset-password" && req.method === "POST") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const username = cleanText(body.username, 64, 1);
+    const password = String(body.password || "");
+    const code = normalizeResetCode(body.code);
+    if (!username || !code || password.length < 8 || password.length > 128) {
+      sendJson(res, 400, { error: "用户名、重置码和至少 8 位新密码都要填" });
+      return true;
+    }
+    const key = rateKey(req, "reset", username);
+    const limit = checkRate(key);
+    if (!limit.ok) {
+      sendJson(res, 429, { error: "尝试次数过多，请稍后再试" }, { "Retry-After": String(limit.retryAfter) });
+      return true;
+    }
+    const row = db.prepare("SELECT id, disabled FROM users WHERE lower(username) = lower(?)").get(username);
+    const reset = row
+      ? db.prepare("SELECT id, code_hash, expires_at FROM password_resets WHERE user_id = ? AND used_at IS NULL ORDER BY created_at DESC LIMIT 1").get(row.id)
+      : null;
+    if (!row || row.disabled || !reset || Number(reset.expires_at) < now() || sha256(code) !== reset.code_hash) {
+      sendJson(res, 400, { error: "重置码无效或已过期，请让管理员重新生成" });
+      return true;
+    }
+    db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hashPassword(password), row.id);
+    db.prepare("UPDATE password_resets SET used_at = ? WHERE id = ?").run(now(), reset.id);
+    db.prepare("DELETE FROM sessions WHERE user_id = ?").run(row.id);
+    clearRate(key);
+    sendJson(res, 200, { ok: true });
+    return true;
+  }
+
   if (p === "/api/auth/logout" && req.method === "POST") {
     const token = parseCookies(req).ml_session;
     if (token) db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(tokenHash(token));
@@ -453,6 +497,25 @@ async function handleApi(req, res, url) {
     const user = requireUser(req, res);
     if (!user) return true;
     sendJson(res, 200, { user });
+    return true;
+  }
+
+  if (p === "/api/account" && req.method === "DELETE") {
+    const user = requireUser(req, res);
+    if (!user) return true;
+    if (user.role === "admin" || user.username === "demo") {
+      sendJson(res, 403, { error: "演示账号和管理员账号不能删除" });
+      return true;
+    }
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const u = db.prepare("SELECT password_hash FROM users WHERE id = ?").get(user.id);
+    if (!u || !verifyPassword(String(body.password || ""), u.password_hash)) {
+      sendJson(res, 403, { error: "密码不正确，账号未删除" });
+      return true;
+    }
+    db.prepare("DELETE FROM users WHERE id = ?").run(user.id);
+    clearSessionCookie(res);
+    sendJson(res, 200, { ok: true });
     return true;
   }
 
@@ -679,6 +742,25 @@ async function handleApi(req, res, url) {
       )
       .all();
     sendJson(res, 200, { users: rows });
+    return true;
+  }
+
+  const ru = p.match(/^\/api\/admin\/users\/([^/]+)\/reset-code$/);
+  if (ru && req.method === "POST") {
+    const admin = requireAdmin(req, res);
+    if (!admin) return true;
+    const target = db.prepare("SELECT id, username FROM users WHERE id = ?").get(ru[1]);
+    if (!target) {
+      sendJson(res, 404, { error: "用户不存在" });
+      return true;
+    }
+    const code = makeResetCode();
+    const expiresAt = now() + 15 * 60 * 1000;
+    db.prepare("DELETE FROM password_resets WHERE user_id = ? AND used_at IS NULL").run(ru[1]);
+    db.prepare(
+      "INSERT INTO password_resets (id, user_id, code_hash, expires_at, used_at, created_at) VALUES (?, ?, ?, ?, NULL, ?)"
+    ).run(uid(), ru[1], sha256(normalizeResetCode(code)), expiresAt, now());
+    sendJson(res, 200, { code, expiresAt, username: target.username });
     return true;
   }
 

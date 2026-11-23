@@ -71,6 +71,9 @@ $("#toRegister").addEventListener("click", () => {
   setMode("register");
   $("#username").focus();
 });
+$("#forgotPassword").addEventListener("click", () => {
+  location.href = "/reset.html";
+});
 $("#fillUser").addEventListener("click", () => {
   setMode("login");
   $("#username").value = "demo";

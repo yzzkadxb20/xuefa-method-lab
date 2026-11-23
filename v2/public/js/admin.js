@@ -366,8 +366,8 @@ async function loadUsers() {
   const data = await api("/api/admin/users");
   const users = data.users || [];
   $("#userTable").innerHTML = `
-    <thead><tr><th>用户名</th><th>角色</th><th>注册时间</th><th>最近同步</th><th>建议数</th></tr></thead>
-    <tbody>${users.map((u) => `<tr><td><b>${esc(u.username)}</b></td><td>${u.role === "admin" ? "管理员" : "用户"}</td><td>${fmt(u.created_at)}</td><td>${fmt(u.state_updated_at)}</td><td>${u.suggestion_count || 0}</td></tr>`).join("")}</tbody>`;
+    <thead><tr><th>用户名</th><th>角色</th><th>注册时间</th><th>最近同步</th><th>建议数</th><th>操作</th></tr></thead>
+    <tbody>${users.map((u) => `<tr><td><b>${esc(u.username)}</b></td><td>${u.role === "admin" ? "管理员" : "用户"}</td><td>${fmt(u.created_at)}</td><td>${fmt(u.state_updated_at)}</td><td>${u.suggestion_count || 0}</td><td><button class="admin-secondary" data-reset-id="${esc(u.id)}" data-reset-name="${esc(u.username)}">生成重置码</button></td></tr>`).join("")}</tbody>`;
 }
 
 function bind() {
@@ -400,6 +400,12 @@ function bind() {
     if (versionBtn && versionMode) {
       selectedVersion = Number(versionBtn.dataset.version);
       return renderVersionHistory();
+    }
+    const resetBtn = e.target.closest("[data-reset-id]");
+    if (resetBtn) {
+      const data = await api(`/api/admin/users/${encodeURIComponent(resetBtn.dataset.resetId)}/reset-code`, { method: "POST", body: {} });
+      window.prompt(`@${resetBtn.dataset.resetName} 的一次性重置码（15 分钟内有效，只显示一次）：`, data.code);
+      return;
     }
     if (e.target.id === "detailSave") return saveSuggestion();
     if (e.target.id === "detailCancel") { $("#detailReply").value = ""; return; }
