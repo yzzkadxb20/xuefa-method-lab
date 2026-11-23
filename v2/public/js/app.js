@@ -44,6 +44,7 @@ let feedbackDraft = null;
 let busy = false;
 let CURRENT_USER = null;
 let saveTimer = null;
+let stateDirty = false;
 let serverSaveWarned = false;
 
 function defaultState() {
@@ -89,21 +90,45 @@ function persist() {
     /* local cache; server is source of truth */
   }
   if (!CURRENT_USER) return;
+  stateDirty = true;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => saveServerState(), 650);
 }
 
-async function saveServerState() {
+async function saveServerState({ force = false, keepalive = false } = {}) {
   if (!CURRENT_USER || !state) return;
+  if (!force && !stateDirty) return;
+  stateDirty = false;
   try {
-    await api("/api/state", { method: "PUT", body: { state } });
+    await api("/api/state", { method: "PUT", body: { state }, keepalive });
     serverSaveWarned = false;
   } catch (err) {
+    stateDirty = true;
     console.warn("server save failed", err);
     if (!serverSaveWarned) {
       serverSaveWarned = true;
       toast("服务端保存失败，已暂存本地；请检查网络后重试。");
     }
+  }
+}
+
+function flushState() {
+  if (!stateDirty || !CURRENT_USER || !state) return;
+  stateDirty = false;
+  try {
+    fetch("/api/state", {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state }),
+      keepalive: true,
+    }).then((res) => {
+      if (!res.ok) stateDirty = true;
+    }).catch(() => {
+      stateDirty = true;
+    });
+  } catch {
+    stateDirty = true;
   }
 }
 
@@ -215,7 +240,7 @@ async function init() {
   renderAll();
   checkHealth();
   // first sync: make the new state durable on the server
-  if (!serverState) saveServerState();
+  if (!serverState) saveServerState({ force: true });
 }
 
 /* ------------------------------------------------------------------ render */
@@ -1257,6 +1282,7 @@ async function loadMySuggestions() {
 }
 
 async function logout() {
+  if (stateDirty) await saveServerState({ force: true });
   try {
     await api("/api/auth/logout", { method: "POST" });
   } catch {}
@@ -1836,4 +1862,8 @@ function bindEvents() {
 }
 
 /* ------------------------------------------------------------------ start */
+window.addEventListener("pagehide", flushState);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") flushState();
+});
 init();

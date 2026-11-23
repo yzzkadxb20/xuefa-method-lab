@@ -89,6 +89,43 @@ CREATE INDEX IF NOT EXISTS idx_methods_published ON methods(published);
 const now = () => Date.now();
 const uid = () => crypto.randomUUID();
 const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
+const AUTH_WINDOW_MS = 15 * 60 * 1000;
+const AUTH_MAX_ATTEMPTS = 8;
+const authAttempts = new Map();
+
+function clientIp(req) {
+  const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  return forwarded || req.socket?.remoteAddress || "unknown";
+}
+
+function rateKey(req, scope, identity = "") {
+  return `${scope}:${clientIp(req)}:${String(identity).toLowerCase()}`;
+}
+
+function checkRate(key) {
+  const t = now();
+  const entry = authAttempts.get(key);
+  if (!entry || entry.resetAt <= t) {
+    authAttempts.set(key, { count: 1, resetAt: t + AUTH_WINDOW_MS });
+    return { ok: true, retryAfter: 0 };
+  }
+  entry.count += 1;
+  if (entry.count > AUTH_MAX_ATTEMPTS) {
+    return { ok: false, retryAfter: Math.ceil((entry.resetAt - t) / 1000) };
+  }
+  return { ok: true, retryAfter: 0 };
+}
+
+function clearRate(key) {
+  authAttempts.delete(key);
+}
+
+const SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+};
 
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -165,6 +202,7 @@ function sendJson(res, status, payload, extraHeaders = {}) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
+    ...SECURITY_HEADERS,
     ...extraHeaders,
   });
   res.end(body);
@@ -330,6 +368,12 @@ async function handleApi(req, res, url) {
     const body = JSON.parse((await readBody(req)) || "{}");
     const username = cleanText(body.username, 24, 3);
     const password = String(body.password || "");
+    const registerKey = rateKey(req, "register");
+    const registerLimit = checkRate(registerKey);
+    if (!registerLimit.ok) {
+      sendJson(res, 429, { error: "尝试次数过多，请稍后再试" }, { "Retry-After": String(registerLimit.retryAfter) });
+      return true;
+    }
     if (!username || !USERNAME_RE.test(username)) {
       sendJson(res, 400, { error: "用户名需 3-24 位，只允许中英文、数字、下划线、短横线" });
       return true;
@@ -351,6 +395,7 @@ async function handleApi(req, res, url) {
       now()
     );
     createSession(res, id);
+    clearRate(registerKey);
     sendJson(res, 201, { user: { id, username, role: "user" } });
     return true;
   }
@@ -359,6 +404,12 @@ async function handleApi(req, res, url) {
     const body = JSON.parse((await readBody(req)) || "{}");
     const username = cleanText(body.username, 64, 1);
     const password = String(body.password || "");
+    const loginKey = rateKey(req, "login", username);
+    const loginLimit = checkRate(loginKey);
+    if (!loginLimit.ok) {
+      sendJson(res, 429, { error: "尝试次数过多，请稍后再试" }, { "Retry-After": String(loginLimit.retryAfter) });
+      return true;
+    }
     const row = username
       ? db
           .prepare("SELECT id, username, role, password_hash, disabled FROM users WHERE lower(username) = lower(?)")
@@ -369,6 +420,7 @@ async function handleApi(req, res, url) {
       return true;
     }
     createSession(res, row.id);
+    clearRate(loginKey);
     sendJson(res, 200, { user: { id: row.id, username: row.username, role: row.role } });
     return true;
   }
@@ -623,6 +675,7 @@ function serveStatic(req, res, url) {
       "Content-Type": MIME[ext] || "application/octet-stream",
       "Content-Length": stat.size,
       "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=300",
+      ...SECURITY_HEADERS,
     });
     fs.createReadStream(file).pipe(res);
   } catch {
@@ -651,7 +704,15 @@ const server = http.createServer(async (req, res) => {
     serveStatic(req, res, url);
   } catch (err) {
     console.error(err);
-    if (!res.headersSent) sendJson(res, err.status || 500, { error: err.message || "Server error" });
+    if (!res.headersSent) {
+      if (err instanceof SyntaxError) {
+        sendJson(res, 400, { error: "请求内容不是有效 JSON" });
+      } else if (err.status) {
+        sendJson(res, err.status, { error: err.message || "请求失败" });
+      } else {
+        sendJson(res, 500, { error: "服务器错误" });
+      }
+    }
   }
 });
 
