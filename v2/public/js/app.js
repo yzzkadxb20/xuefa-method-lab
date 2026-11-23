@@ -853,6 +853,9 @@ function toggleTask(taskId) {
   const task = state.plan.tasks.find((t) => t.id === taskId);
   if (!task) return;
   task.done = !task.done;
+  // 聊天里的任务卡是消息快照；同步最新 plan，否则勾选后界面不会更新
+  const planMsg = [...state.messages].reverse().find((m) => m.type === "plan" && m.data?.plan);
+  if (planMsg) planMsg.data.plan = state.plan;
   persist();
   renderAll();
   scrollChat();
